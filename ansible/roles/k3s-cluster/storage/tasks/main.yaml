@@ -1,0 +1,29 @@
+---
+- name: Detect disk
+  shell: lsblk --json -o SIZE | jq '.blockdevices|any(.size == "{{ partition_size }}")'
+  register: lsblk_bigdisk_output
+- set_fact:
+    saved_inventory_hostname: "{{ inventory_hostname }}"
+- name: Get VM ID
+  shell: "qm list | grep {{ saved_inventory_hostname | split('.') | first }} | awk '{print $1}'"
+  delegate_to: "{{ groups['proxmox_nodes'] | first }}"
+  register: vm_id
+- debug:
+    var: vm_id
+- name: Attach disk if necessary
+  command: "qm set {{ vm_id.stdout }} -scsi1 {{ proxmox_storage_device }}{{ groups['kates_workers'].index(saved_inventory_hostname) + 1 }}"
+  delegate_to: "{{ groups['proxmox_nodes'] | first }}"
+  when: lsblk_bigdisk_output.stdout == "false"
+- name: Create data directory
+  file:
+    path: /data
+    state: directory
+- name: Fetch disk UUID
+  shell: lsblk --json -o SIZE,UUID | jq -r '.blockdevices|map(select(.size == "{{ partition_size }}"))|first|.uuid'
+  register: lsblk_uuid_output
+- name: Add disk filesystem UUID to fstab
+  lineinfile:
+    line: "UUID={{ lsblk_uuid_output.stdout }} /data           ext4    defaults          0       0"
+    regexp: "^UUID={{ lsblk_uuid_output.stdout }}"
+    state: present
+    path: /etc/fstab

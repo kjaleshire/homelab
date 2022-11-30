@@ -1,0 +1,14 @@
+- name: Install Visual Studio Code
+  become: true
+  block:
+    - name: Add Microsoft PGP public key
+      shell: wget -qO - https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | tee /etc/apt/keyrings/packages.microsoft.gpg
+    - name: Add Visual Studio Code repository
+      apt_repository:
+        repo: deb [arch=amd64,arm64,armhf signed-by=/etc/apt/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main
+        filename: vscode
+        state: present
+    - name: Install Visual Studio Code
+      apt:
+        update_cache: true
+        pkg: code

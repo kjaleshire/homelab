@@ -1,0 +1,41 @@
+- name: Gather the package facts
+  package_facts:
+    manager: auto
+- name: Install fish shell (Debian)
+  become: true
+  when: |
+    ('fish' not in ansible_facts.packages or
+    ansible_facts.packages['fish'][0]['version'] | split('-') | first is version(fish_version, '<')
+    ) and ansible_facts.os_family == 'Debian'
+  block:
+    - name: Add OpenSUSE PGP public key
+      shell: wget -qO - https://download.opensuse.org/repositories/shells:fish:release:3/Debian_11/Release.key | gpg --dearmor | tee /etc/apt/keyrings/shells_fish_release_3.gpg
+    - name: Add OpenSUSE apt repository
+      apt_repository:
+        repo: deb [arch=amd64 signed-by=/etc/apt/keyrings/shells_fish_release_3.gpg] https://download.opensuse.org/repositories/shells:/fish:/release:/3/Debian_11/ /
+        state: present
+        filename: shells:fish:release:3
+    - name: Install fish shell (Debian)
+      apt:
+        update_cache: true
+        pkg: fish
+    - name: Make fish the default shell (Debian)
+      ansible.builtin.user:
+        name: "{{ ansible_user }}"
+        shell: /usr/bin/fish
+- name: Install fish shell (FreeBSD)
+  become: true
+  block:
+    - name: Install fish shell (FreeBSD)
+      environment:
+        BATCH: 'yes'
+      shell: |
+        cd /usr/ports/shells/fish
+        pkg info -e fish
+        [ $? = 1 ] && make reinstall && make clean
+        exit 0
+    - name: Make fish the default shell (FreeBSD)
+      ansible.builtin.user:
+        name: "{{ ansible_user }}"
+        shell: /usr/local/bin/fish
+  when: ansible_facts.os_family == 'FreeBSD'

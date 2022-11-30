@@ -1,0 +1,10 @@
+- name: Install tabby terminal emulator
+  become: true
+  apt:
+    deb: "{{ item }}"
+  loop:
+    - "https://github.com/Eugeny/tabby/releases/download/v{{ tabby_version }}/tabby-{{ tabby_version }}-linux-x64.deb"
+- name: Fix any broken dependencies
+  become: true
+  apt:
+    state: fixed

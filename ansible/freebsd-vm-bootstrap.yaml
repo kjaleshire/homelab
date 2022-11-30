@@ -1,0 +1,4 @@
+- hosts: freebsdvm
+  gather_facts: false # Should be false as python is not installed yet
+  roles:
+    - freebsd/bootstrap

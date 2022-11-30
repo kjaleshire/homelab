@@ -1,0 +1,114 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: code
+---
+kind: Service
+apiVersion: v1
+metadata:
+  labels:
+    app: code-server
+  name: code-server
+  namespace: code
+spec:
+  ports:
+    - port: 8080
+      targetPort: 8080
+  selector:
+    app: code-server
+---
+# Redirect to https
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: https-redirect
+  namespace: code
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: code-server
+  namespace: code
+spec:
+  entryPoints:
+    - web
+    - websecure
+  routes:
+    - match: Host(`code.flight.kja.us`)
+      kind: Rule
+      middlewares:
+        - name: https-redirect
+          namespace: code
+      services:
+        - name: code-server
+          namespace: code
+          port: 8080
+          kind: Service
+          scheme: http
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: code-server-data-claim
+  namespace: code
+  labels:
+    app: code-server
+spec:
+  storageClassName: openebs-hostpath
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: code-server
+  namespace: code
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: code-server
+  template:
+    metadata:
+      labels:
+        app: code-server
+    spec:
+      nodeSelector:
+        "openebs.io/nodegroup": "storage-node"
+      containers:
+        - name: code-server
+          image: codercom/code-server:latest
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: PWD
+              value: /home/coder/project
+            - name: TZ
+              value: America/New_York
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 10
+            timeoutSeconds: 10
+          volumeMounts:
+            - name: code-server-data-volume
+              mountPath: /home/coder
+              readOnly: false
+      volumes:
+        - name: code-server-data-volume
+          persistentVolumeClaim:
+            claimName: code-server-data-claim

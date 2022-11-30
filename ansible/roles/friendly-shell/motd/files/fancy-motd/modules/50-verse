@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+# shellcheck source=./framework.sh
+source "${BASE_DIR}/framework.sh"
+
+quote="$(echo; verse | fold -sw "${WIDTH}"; echo)"
+
+print_columns "" "${quote}"

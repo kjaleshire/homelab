@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+# shellcheck source=./framework.sh
+source "${BASE_DIR}/framework.sh"
+
+local_ips_v4=$(ip a | awk '/inet / && /global/ {split($2, arr, /\//); print arr[1]}')
+IFS=$'\n' read -r -a local_ips <<< "${local_ips_v4}"
+ips=$(print_wrap "${WIDTH}" "${local_ips[@]}")
+
+wan_ip_v4=$(curl --max-time 1 ifconfig.me/ip)
+
+[[ $wan_ip_v4 != "" ]] && ips+=" (Public ${wan_ip_v4})"
+
+print_columns "IP addresses" "${ips}"

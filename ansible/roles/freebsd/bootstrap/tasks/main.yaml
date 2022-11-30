@@ -1,0 +1,14 @@
+- name: Bootstrap FreeBSD
+  become: true
+  block:
+    - name: Install python, curl, and wget
+      raw: sh -c "ASSUME_ALWAYS_YES=yes pkg install python curl wget"
+    - name: Enable sshd service
+      lineinfile:
+        dest: /etc/rc.conf
+        regexp: '^sshd_enable='
+        line: 'sshd_enable="YES"'
+    - name: Update root password
+      ansible.builtin.user:
+        name: root
+        password: "{{ set_root_pw }}"

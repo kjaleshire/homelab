@@ -1,0 +1,39 @@
+.DS_Store
+
+# Visual Studio Code
+.vscode
+
+# direnv
+.envrc
+
+# asdf
+.tool-versions
+
+Release.key
+
+ansible/roles/files/*
+
+# kubernetes config
+kubernetes/.kube
+
+# anything inside a build directory
+packer/**/build/
+
+# certificates
+packer/kates-node/certs/
+
+# SSH keys
+packer/debian-vm/ssh/
+packer/kates-node/ssh/
+
+# Terraform
+.terraform*
+terraform.tfstate*
+terraform-plugin-proxmox.log*
+
+# cloud-init renders
+terraform/cloud-init/build/**
+
+# Certificates & private key
+terraform/cloud-init/common/etc/certs/
+terraform/cloud-init/common/home/ssh/

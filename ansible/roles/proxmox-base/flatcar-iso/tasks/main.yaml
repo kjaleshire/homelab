@@ -1,0 +1,34 @@
+- name: Check if Flatcar  image is installed
+  stat:
+    path: "/var/lib/vz/template/iso/flatcar_production_iso_image-{{ flatcar_version }}.iso"
+  register: flatcar_image_installed
+- name: Download, check, and install Flatcar image
+  when: flatcar_image_installed.stat.exists == False
+  # only need the image on one of the Proxmox hosts
+  run_once: true
+  block:
+    # - name: Fetch Flatcar PGP public key
+    #   shell: "gpg --keyserver pgp.mit.edu --recv-key {{ flatcar_pubkey_id }}"
+    - name: Copy Flatcar image signing key file
+      copy:
+        src: Flatcar_Image_Signing_Key.asc
+        dest: /tmp/Flatcar_Image_Signing_Key.asc
+    - name: Import Flatcar PGP public key
+      shell: gpg --import --keyid-format LONG /tmp/Flatcar_Image_Signing_Key.asc
+    - name: Fetch Flatcar image signature
+      get_url:
+        url: "https://stable.release.flatcar-linux.net/amd64-usr/{{ flatcar_version }}/flatcar_production_iso_image.iso.sig"
+        dest: /tmp/flatcar_production_iso_image.iso.sig
+    - name: Fetch Flatcar image
+      get_url:
+        url: "https://stable.release.flatcar-linux.net/amd64-usr/{{ flatcar_version }}/flatcar_production_iso_image.iso"
+        dest: /tmp/flatcar_production_iso_image.iso
+    - name: Verify the PGP file signature
+      shell: gpg --verify /tmp/flatcar_production_iso_image.iso.sig /tmp/flatcar_production_iso_image.iso
+    - name: Move ISO into VM templates directory
+      shell: "mv /tmp/flatcar_production_iso_image.iso /var/lib/vz/template/iso/flatcar_production_iso_image-{{ flatcar_version }}.iso"
+    - name: Remove Flatcar image accessories
+      file:
+        path: "/tmp/{{ item }}"
+        state: absent
+      loop: ["Flatcar_Image_Signing_Key.asc", "flatcar_production_iso_image.iso.sig", "flatcar_production_iso_image.iso"]

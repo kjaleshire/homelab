@@ -1,0 +1,8 @@
+- name: Allow the debian user to run any commands as root
+  become: true
+  community.general.sudoers:
+    name: debian-sudo
+    user: debian
+    nopassword: false
+    runas: root
+    commands: ALL

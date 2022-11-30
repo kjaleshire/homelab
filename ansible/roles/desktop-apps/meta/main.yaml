@@ -1,0 +1,7 @@
+dependencies:
+  - role: desktop-apps/firefox
+  - role: desktop-apps/ivpn
+  - role: desktop-apps/nerd-fonts
+    tags: fonts
+  - role: desktop-apps/sublime-text
+  - role: desktop-apps/vscode

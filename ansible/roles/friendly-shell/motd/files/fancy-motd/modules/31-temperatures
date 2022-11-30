@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+# shellcheck source=./framework.sh
+source "${BASE_DIR}/framework.sh"
+
+cores="$(sensors -f | awk '/Core/ { print substr($3, 2, length($3) - 4), substr($6, 2, length($6) - 5), substr($9, 2, length($9) - 5) }')"
+
+text="Cores: "
+while IFS= read -r line; do
+    IFS=" " read -r current high critical <<< "${line}"
+
+    if [[ "${high}" == "${critical}" ]]; then
+        high=$(bc -l <<< "${high} - 20")
+    fi
+
+    text+="$(print_color "${current}°F" "${current}" "${high}" "${critical}"), "
+done <<< "${cores}"
+
+hdd_temp=$(hddtemp /dev/sda -nquf)
+if [[ $hdd_temp != "0" && $hdd_temp != "" ]]; then
+    # hdd_text=" | HDD: ${hdd_temp}°F"
+    high="110"
+    critical="140"
+    hdd_text+=" | HDD: $(print_color "${hdd_temp}°F" "${hdd_temp}" "${high}" "${critical}")"
+fi
+
+print_columns "Temperatures" "${text::-2}${hdd_text}"

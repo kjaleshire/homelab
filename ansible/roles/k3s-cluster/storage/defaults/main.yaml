@@ -1,0 +1,2 @@
+partition_size: 2.3T
+proxmox_storage_device: /dev/sda

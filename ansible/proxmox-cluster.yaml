@@ -1,0 +1,9 @@
+- hosts: proxmox_nodes
+  roles:
+    - role: dnsmasq
+      tags: dns
+    - role: friendly-shell
+      tags: friendly-shell
+    - role: nginx
+      tags: nginx
+    - proxmox-base

@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+# shellcheck source=./framework.sh
+source "${BASE_DIR}/framework.sh"
+
+uptime=$(uptime -p | cut -d ' ' -f 2-)
+
+loads=$(cut -d ' ' -f '1,2,3' /proc/loadavg)
+nproc=$(nproc)
+warning_threshold=$(bc -l <<< "${nproc} * 0.9")
+error_threshold=$(bc -l <<< "${nproc} * 1.5")
+
+load_text=""
+for load in ${loads}; do
+    load_text+="$(print_color "${load}" "${load}" "${warning_threshold}" "${error_threshold}"), "
+done
+
+print_columns "Uptime" "${uptime} (${load_text::-2})"

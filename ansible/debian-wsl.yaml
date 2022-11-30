@@ -1,0 +1,7 @@
+- hosts: wsl_debian
+  roles:
+    - role: common-apt
+      tags: common-apt
+    - friendly-shell
+    - rust-lang
+    - debian-base

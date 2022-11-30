@@ -1,0 +1,16 @@
+- name: Install asdf
+  git:
+    repo: https://github.com/asdf-vm/asdf.git
+    dest: "{{ user_home }}/.asdf"
+    depth: 1
+    version: "v{{ asdf_version }}"
+- name: Create asdf completions directory
+  file:
+    path: "{{ user_home }}/.config/fish/completions"
+    state: directory
+    mode: 0755
+- name: Link asdf completions
+  file:
+    src: "{{ user_home }}/.asdf/completions/asdf.fish"
+    dest: "{{ user_home }}/.config/fish/completions/asdf.fish"
+    state: link

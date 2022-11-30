@@ -1,0 +1,11 @@
+- name: Provision Kali
+  become: true
+  block:
+    - name: Install base packages
+      apt:
+        pkg: kali-linux-large
+    # opting to use the vanilla code package from microsoft
+    - name: Remove conflicting vscode package
+      apt:
+        pkg: code-oss
+        state: absent

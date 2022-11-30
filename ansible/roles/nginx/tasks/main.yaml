@@ -1,0 +1,13 @@
+- name: Install nginx
+  apt:
+    pkg: nginx
+- name: Remove existing site-enabled
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: Reload nginx
+- name: Copy nginx reverse proxy config
+  copy:
+    src: nginx.conf
+    dest: /etc/nginx/nginx.conf
+  notify: Reload nginx

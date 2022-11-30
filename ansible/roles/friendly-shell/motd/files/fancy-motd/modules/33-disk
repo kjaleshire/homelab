@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+# shellcheck source=./framework.sh
+source "${BASE_DIR}/framework.sh"
+
+excluded_types=(
+    "devtmpfs"
+    "ecryptfs"
+    "overlay"
+    "squashfs"
+    "tmpfs"
+)
+
+# shellcheck disable=SC2046
+disks="$(df -h --local --print-type $(printf " -x %s" "${excluded_types[@]}") | tail -n +2 | sort -u -k 7 | egrep -v '(^rpool |^rpool/data)')"
+
+text=""
+while IFS= read -r disk; do
+    IFS=" " read -r filesystem _ total used free percentage mountpoint <<< "${disk}"
+
+    device=$(sed 's|/dev||g;s|/mapper||g;s|^/||g' <<< "${filesystem}")
+    left_label="${device} () - ${used} used, ${free} free"
+    right_label="/ ${total}"
+    free_width=$((WIDTH - ${#left_label} - ${#right_label} - 1))
+    mountpoint=$(print_truncate "${mountpoint}" ${free_width} "start")
+    left_label="${device} (${mountpoint}) - ${used} used, ${free} free"
+
+    label=$(print_split "${WIDTH}" "${left_label}" "${right_label}")
+    text+="${label}\n$(print_bar "${WIDTH}" "${percentage::-1}")\n"
+done <<< "${disks}"
+
+print_columns "Disk space" "${text::-2}"

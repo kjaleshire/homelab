@@ -1,0 +1,18 @@
+- name: Gather the package facts
+  ansible.builtin.package_facts:
+    manager: auto
+- name: Install iVPN client
+  when: "'ivpn-ui' not in ansible_facts.packages"
+  become: true
+  block:
+    - name: Add iVPN PGP public key
+      shell: wget -qO - https://repo.ivpn.net/stable/debian/generic.gpg | gpg --dearmor | tee /etc/apt/keyrings/ivpn-archive-keyring.gpg
+    - name: Add iVPN repository
+      apt_repository:
+        repo: deb [arch=amd64 signed-by=/etc/apt/keyrings/ivpn-archive-keyring.gpg] https://repo.ivpn.net/stable/debian ./generic main
+        filename: ivpn.list
+        state: present
+    - name: Install iVPN
+      apt:
+        update_cache: true
+        pkg: ivpn-ui

@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Default services, have to be declared before sourcing framework.sh so the user can override them
+declare -A services
+services["sshd"]="sshd"
+services["dnsmasq"]="dnsmasq"
+services["nginx"]="nginx"
+services["k3s-node"]="k3s"
+
+# shellcheck source=./framework.sh
+source "${BASE_DIR}/framework.sh"
+
+statuses=()
+for key in "${!services[@]}"; do
+    if [[ $(systemctl list-unit-files "${key}*" | wc -l) -gt 3 ]]; then
+        status=$(systemctl show -p ActiveState --value "${key}")
+        statuses+=("$(print_status "${services[${key}]}" "${status}")")
+    fi
+done
+
+text=$(print_wrap "${WIDTH}" "${statuses[@]}")
+
+print_columns "Services" "${text}"

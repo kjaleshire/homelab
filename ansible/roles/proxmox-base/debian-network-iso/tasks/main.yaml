@@ -1,0 +1,39 @@
+- name: Check if Debian network image is installed
+  stat:
+    path: "/var/lib/vz/template/iso/debian-{{ debian_image_version }}.iso"
+  register: debian_network_image_installed
+- name: Download, check, and install Debian network image
+  when: debian_network_image_installed.stat.exists == False
+  # only need the image on one of the Proxmox hosts
+  run_once: true
+  block:
+    - name: Fetch Debian network image SHA signature
+      get_url:
+        url: https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/SHA512SUMS.sign
+        dest: /tmp/SHA512SUMS.sign
+    - name: Fetch Debian network image SHA
+      get_url:
+        url: https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/SHA512SUMS
+        dest: /tmp/SHA512SUMS
+      register: sha512sum_result
+    - name: Fetch Debian PGP public key
+      shell: "gpg --keyserver keyring.debian.org --recv-key {{ debian_pubkey_id }}"
+    - name: Verify the SHA file signature
+      shell: gpg --verify /tmp/SHA512SUMS.sign /tmp/SHA512SUMS
+      register: sha_sig_verify
+    - name: Save SHA512SUMS as variable
+      shell: cat /tmp/SHA512SUMS
+      register: sha512sums
+    - name: Fetch Debian network image
+      get_url:
+        url: "https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/debian-{{ debian_image_version }}.iso"
+        dest: "/tmp/debian-{{ debian_image_version }}.iso"
+        checksum: "sha512:{{ sha512sums.stdout_lines | select('match', '.*debian-' + debian_image_version + '.iso$') | first | split | first }}"
+      register: debian_network_image
+    - name: Move ISO into VM templates directory
+      shell: "mv /tmp/debian-{{ debian_image_version }}.iso /var/lib/vz/template/iso/"
+    - name: Remove Debian network image accessories
+      file:
+        path: "/tmp/{{ item }}"
+        state: absent
+      loop: [SHA512SUMS, SHA512SUMS.sign, "debian-{{ debian_image_version }}.iso"]

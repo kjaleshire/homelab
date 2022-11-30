@@ -1,0 +1,112 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: traefik-dashboard
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: traefik-dashboard
+  namespace: traefik-dashboard
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`traefik.flight.kja.us`)
+      kind: Rule
+      services:
+        - name: api@internal
+          kind: TraefikService
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tls-conf
+  namespace: kube-system
+data:
+  tls_stores: |
+    [tls.stores]
+      [tls.stores.default]
+        [tls.stores.default.defaultCertificate]
+          certFile = "/etc/certs/flight.kja.us.crt"
+          keyFile  = "/etc/certs/flight.kja.us.key"
+---
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    image:
+      name: "traefik"
+      tag: "v2.9"
+    dashboard:
+      enabled: true
+    ports:
+      traefik:
+        expose: true # this is not recommended in production deployments, but I want to be able to see my dashboard locally
+      giteassh:
+        port: 2022
+        expose: true
+        exposedPort: 2022
+        # The port protocol (TCP/UDP)
+        protocol: TCP
+    logs:
+      access:
+        enabled: true
+    deployment:
+      additionalVolumes:
+      - name: flight-ca
+        hostPath:
+          path: /etc/certs/flight-ca.pem
+          type: File
+      - name: flight-cert
+        hostPath:
+          path: /etc/k3s/certs/flight.kja.us.crt
+          type: File
+      - name: flight-key
+        hostPath:
+          path: /etc/k3s/certs/flight.kja.us.key
+          type: File
+      - name: tls-conf
+        configMap:
+          items:
+            - key: tls_stores
+              path: tls.toml
+          name: tls-conf
+    additionalVolumeMounts:
+     - name: flight-ca
+       mountPath: /etc/certs/flight-ca.pem
+       readOnly: true
+     - name: flight-cert
+       mountPath: /etc/certs/flight.kja.us.crt
+       readOnly: true
+     - name: flight-key
+       mountPath: /etc/certs/flight.kja.us.key
+       readOnly: true
+     - name: tls-conf
+       mountPath: /traefik-dynamic-config/tls.toml
+       readOnly: true
+    additionalArguments:
+      - "--providers.file.directory=/traefik-dynamic-config"
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: basic-auth
+  namespace: kube-system
+spec:
+  basicAuth:
+    secret: traefik-basic-auth
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: traefik-basic-auth
+  namespace: kube-system
+data:
+# htpasswd -nb username password | openssl base64
+  users: |2
+    super_secret_base64_password

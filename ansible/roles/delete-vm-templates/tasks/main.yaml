@@ -1,0 +1,22 @@
+- name: Install proxmoxer
+  pip:
+    name: proxmoxer>1.3.0,<1.4.0
+- name: Confirm template deletion
+  tags: kates
+  pause:
+    prompt: Please confirm you want to delete the kates VM template(s)
+- name: Delete kates VM template(s)
+  tags: kates
+  run_once: true
+  vars:
+    realm: pam
+  community.general.proxmox_kvm:
+    api_host: "{{ lookup('ansible.builtin.env', 'PROXMOX_HOST1') }}"
+    api_user: "{{ lookup('ansible.builtin.env', 'PROXMOX_USERNAME') }}@{{ realm }}"
+    api_password: "{{ lookup('ansible.builtin.env', 'PROXMOX_PASSWORD') }}"
+    name: "{{ item.template_name }}"
+    node: "{{ lookup('ansible.builtin.env', 'PROXMOX_HOST1_NODE') }}"
+    vmid: "{{ item.vmid }}"
+    state: absent
+  loop:
+    - { template_name: kates-debian-11.5.0-tpl, vmid: 1003 }

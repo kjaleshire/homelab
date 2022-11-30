@@ -1,0 +1,164 @@
+#
+#  Preseed file for Debian 11 Bullseye
+#  - https://www.debian.org/releases/bullseye/amd64/pr01.en.html
+#  - https://wiki.debian.org/DebianInstaller/Preseed
+#
+
+#
+#  Localization
+#  - Locale sets language and country + keyboard selection
+#
+d-i debian-installer/locale string en_US.utf8
+d-i keyboard-configuration/xkb-keymap select us
+
+### Network configuration
+
+# If you prefer to configure the network manually, uncomment this line and
+# the static network configuration below.
+# d-i netcfg/disable_autoconfig boolean true
+
+# netcfg will choose an interface that has link if possible. This makes it
+# skip displaying a list if there is more than one interface.
+d-i netcfg/choose_interface select auto
+
+# If you want the preconfiguration file to work on systems both with and
+# without a dhcp server, uncomment these lines and the static network
+# configuration below.
+# d-i netcfg/dhcp_failed note
+# d-i netcfg/dhcp_options select Configure network manually
+
+# Static network configuration.
+# d-i netcfg/get_nameservers string 75.75.75.75
+# d-i netcfg/get_ipaddress string 10.0.0.10
+# d-i netcfg/get_netmask string 255.255.255.0
+# d-i netcfg/get_gateway string 192.168.0.1
+# d-i netcfg/confirm_static boolean true
+
+# # Any hostname and domain names assigned from dhcp take precedence over
+# # values set here. However, setting the values still prevents the questions
+# # from being shown, even if values come from dhcp.
+# d-i netcfg/get_hostname string host
+# d-i netcfg/get_domain string host.flight.kja.us
+
+#
+#  Mirror settings
+#
+d-i mirror/country string manual
+d-i mirror/http/hostname string deb.debian.org
+d-i mirror/http/directory string /debian/
+d-i mirror/http/proxy string
+
+#
+#  Clock and time zone setup
+#  - Controls whether or not the hardware clock is set to UTC
+#  - See "ls -R /usr/share/zoneinfo/" for valid values
+#
+d-i clock-setup/utc boolean true
+d-i time/zone string UTC
+
+#
+#  Partitioning
+#  - Create an unencrypted primary ext4 partition without swap
+#
+d-i partman-auto/disk string /dev/sda
+d-i partman-auto/method string regular
+d-i partman-auto/choose_recipe select atomic
+d-i partman-basicfilesystems/no_swap boolean false
+d-i partman-auto/expert_recipe string \
+    root :: \
+         8190 100000 -1 ext4 \
+              $primary{ } $bootable{ } \
+              method{ format } format{ } \
+              use_filesystem{ } filesystem{ ext4 } \
+              mountpoint{ / } \
+        .
+d-i partman-partitioning/confirm_write_new_label boolean true
+d-i partman/choose_partition select finish
+d-i partman/confirm boolean true
+d-i partman/confirm_nooverwrite boolean true
+
+#
+#  Account setup + encrypted passwords
+#  - Use "mkpasswd -s -m md5" or "mkpasswd -m sha-512" to hash password
+#  - Command "mkpasswd" is part of "whois" package
+#  - User: root | Pass: root | Disabled by default
+#
+d-i passwd/root-login boolean false
+#d-i passwd/root-password-crypted password $6$jfaNj9EpCaQo1zs$8AkIeA26WEMOt1t.4fDQJT9tetZQbgufKZFr6CNq8Z144lfnP6sexqBAyRgA7LhPHpdjUg0S4IU4L6IzdWz4E0
+
+# mkpasswd -m sha-512 -S $(pwgen -ns 16 1) password
+d-i passwd/username string ${username}
+d-i passwd/user-fullname string ${username}
+d-i user-setup/encrypt-home boolean false
+d-i passwd/user-password-crypted password ${password_crypted}
+
+#
+#  Package selection
+#  - Full upgrade packages after debootstrap and unattended upgrades
+#  - Individual additional packages to install
+#    - qemu-guest-agent needed for packer; better random generator speeds up boot
+#
+tasksel tasksel/first multiselect standard
+d-i pkgsel/upgrade select full-upgrade
+d-i pkgsel/update-policy select unattended-upgrades
+d-i pkgsel/include string openssh-server sudo qemu-guest-agent haveged cloud-init apt-transport-https ca-certificates software-properties-common gnupg-agent openssl pip curl wget unzip git htop jq exa bat ripgrep
+d-i pkgsel/install-language-support boolean false
+
+#  Do not report back on what software is installed + used
+popularity-contest popularity-contest/participate boolean false
+
+#
+#  Boot loader installation
+#
+d-i grub-installer/bootdev string /dev/sda
+grub-pc grub-pc/timeout string 1
+
+#
+#  Run custom commands during the installation:
+#  - Clean the apt cache
+#  - Delete everything recent in /tmp
+#  - Enable necessary services
+#  - Add the controller SSH public key and the key pair for Github access
+#      (the private key in base64 because it contains newlines)
+#  - Enable sudo for user
+#  - Add self-signed CA & TLS cert + key
+#  - Reset machine-id
+#  - Disable select cloud-init modules
+#
+d-i preseed/late_command string \
+    in-target apt-get clean; \
+    in-target find /tmp -type f -atime +10 -delete; \
+    in-target systemctl enable ssh.service; \
+    in-target /bin/sh -c "mkdir -p /home/${username}/.ssh"; \
+    in-target /bin/sh -c "echo '${ssh_public_key}' >> /home/${username}/.ssh/authorized_keys"; \
+    in-target /bin/sh -c "(echo '${node_private_key_b64}' | openssl base64 -A -d; echo '\n') > /home/${username}/.ssh/id_ed25519"; \
+    in-target /bin/sh -c "echo '${node_public_key}\n' > /home/${username}/.ssh/id_ed25519.pub"; \
+    in-target chmod 0600 /home/${username}/.ssh/id_ed25519; \
+    in-target chown -R ${username}:${username} /home/${username}/.ssh; \
+    in-target /bin/sh -c "echo '${username} ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers.d/90-${username}"; \
+    in-target chmod 0440 /etc/sudoers.d/90-${username}; \
+    in-target /bin/sh -c "mkdir -p /etc/certs /etc/k3s/certs"; \
+    in-target /bin/sh -c "(echo '${tls_ca_b64}' | openssl base64 -A -d; echo '\n') > /etc/certs/flight-ca.pem"; \
+    in-target update-ca-certificates; \
+    in-target /bin/sh -c "(echo '${tls_certificate_b64}' | openssl base64 -A -d; echo '\n') > /etc/k3s/certs/flight.kja.us.crt"; \
+    in-target /bin/sh -c "(echo '${tls_private_key_b64}' | openssl base64 -A -d; echo '\n') > /etc/k3s/certs/flight.kja.us.key"; \
+    in-target cat /dev/null | tee /etc/machine-id; \
+    in-target cat /dev/null | tee /var/lib/dbus/machine-id; \
+    in-target sed -i 's/^\s*users:/#&/' /etc/cloud/cloud.cfg; \
+    in-target sed -i 's/^\s*- default/#&/' /etc/cloud/cloud.cfg; \
+    in-target sed -i 's/^\s*- snap/#&/' /etc/cloud/cloud.cfg; \
+    in-target sed -i 's/^\s*- disable-ec2-metadata/#&/' /etc/cloud/cloud.cfg; \
+    in-target sed -i 's/^\s*- byobu/#&/' /etc/cloud/cloud.cfg; \
+    in-target sed -i 's/^\s*- fan/#&/' /etc/cloud/cloud.cfg; \
+    in-target sed -i 's/^\s*- lxd/#&/' /etc/cloud/cloud.cfg; \
+    in-target sed -i 's/^\s*- puppet/#&/' /etc/cloud/cloud.cfg; \
+    in-target sed -i 's/^\s*- chef/#&/' /etc/cloud/cloud.cfg; \
+    in-target sed -i 's/^\s*- mcollective/#&/' /etc/cloud/cloud.cfg; \
+    in-target sed -i 's/^\s*- salt-minion/#&/' /etc/cloud/cloud.cfg; \
+    in-target sed -i 's/^\s*- rightscale_userdata/#&/' /etc/cloud/cloud.cfg; \
+    in-target sed -i 's/^\s*- phone-home/#&/' /etc/cloud/cloud.cfg;
+
+#
+#  Avoid that last message about the install being complete
+#
+d-i finish-install/reboot_in_progress note

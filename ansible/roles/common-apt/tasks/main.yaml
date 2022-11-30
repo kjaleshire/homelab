@@ -1,0 +1,31 @@
+- name: Install apt packages
+  become: true
+  apt:
+    pkg:
+      - avahi-daemon
+      - avahi-utils
+      - bat
+      - bpftrace
+      - curl
+      - dash
+      - exa
+      - git
+      - htop
+      - libnss-mdns
+      - lsb-release
+      - nano
+      - pip
+      - pwgen
+      - ripgrep
+      - sudo
+      - tmux
+      - unzip
+      - wget
+- name: Install other deb packages
+  become: true
+  tags: other-debs
+  apt:
+    deb: "{{ item }}"
+  loop:
+    - "https://github.com/Peltoche/lsd/releases/download/{{ lsd_version }}/lsd_{{ lsd_version }}_amd64.deb"
+    - "https://github.com/dandavison/delta/releases/download/{{ delta_version }}/git-delta_{{ delta_version }}_amd64.deb"

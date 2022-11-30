@@ -1,0 +1,17 @@
+- name: Fetch the kube config
+  tags: k3s-config
+  slurp:
+    src: ~{{ ansible_user }}/.kube/config
+  register: kube_config
+- name: Write kube config locally
+  tags: k3s-config
+  become: false
+  copy:
+    content: "{{ kube_config.content | b64decode }}"
+    dest: "{{ lookup('ansible.builtin.env', 'KUBECONFIG') }}"
+  delegate_to: localhost
+- name: Rename default context
+  tags: k3s-config
+  become: false
+  command: "kubectl config rename-context default kates --kubeconfig {{ lookup('ansible.builtin.env', 'KUBECONFIG') }}"
+  delegate_to: localhost

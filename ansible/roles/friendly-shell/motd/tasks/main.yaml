@@ -1,0 +1,35 @@
+- name: Install figlet & temp utilities
+  apt:
+    pkg:
+      - figlet
+      - hddtemp
+      - lm-sensors
+      - verse
+- name: Erase existing motd files & fancy-motd directory
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop: ["/etc/motd", "/etc/update-motd.d/10-uname", "/etc/update-motd.d/fancy-motd"]
+- name: Copy fancy-motd files
+  copy:
+    src: fancy-motd
+    dest: /etc/update-motd.d/
+    mode: 0755
+- name: Copy fancy-motd invoker
+  copy:
+    src: 99-fancy-motd
+    dest: /etc/update-motd.d/99-fancy-motd
+    mode: 0755
+- name: Copy figlet fonts
+  copy:
+    src: "fonts/{{ item }}"
+    dest: "/usr/share/figlet/{{ item }}"
+    mode: 0644
+  loop:
+    # - Alligator2.flf
+    # - AMC Slash.flf
+    # - ANSI Shadow.flf
+    # - Georgia11.flf
+    # - Lean.flf
+    - Nancyj-Improved.flf
+    # - Univers.flf

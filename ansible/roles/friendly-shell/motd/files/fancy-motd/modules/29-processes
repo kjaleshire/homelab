@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+# shellcheck source=./framework.sh
+source "${BASE_DIR}/framework.sh"
+
+all_processes=$(ps -A h | wc -l)
+
+print_columns "Processes" "${all_processes}"

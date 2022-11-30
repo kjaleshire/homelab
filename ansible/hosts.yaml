@@ -1,0 +1,49 @@
+---
+all:
+  children:
+    proxmox_nodes:
+      hosts:
+        arbol:
+          ansible_host: "{{ lookup('ansible.builtin.env', 'PROXMOX_HOST1') }}"
+          ansible_user: "{{ lookup('ansible.builtin.env', 'PROXMOX_USERNAME') }}"
+          user_home: "/{{ ansible_user }}"
+    kates_servers:
+      hosts:
+        kates-server-[0:2].flight.kja.us:
+          ansible_user: "{{ lookup('ansible.builtin.env', 'KATES_USERNAME') }}"
+          user_home: "/home/{{ ansible_user }}"
+    kates_workers:
+      hosts:
+        kates-worker-[0:2].flight.kja.us:
+          ansible_user: "{{ lookup('ansible.builtin.env', 'KATES_USERNAME') }}"
+          user_home: "/home/{{ ansible_user }}"
+    kates_nodes:
+      children:
+        kates_servers:
+        kates_workers:
+    local_vms:
+      hosts:
+        kalivm:
+          ansible_host: "{{ lookup('ansible.builtin.env', 'KALI_HOST') }}"
+          ansible_user: "{{ lookup('ansible.builtin.env', 'KALI_USERNAME') }}"
+          ansible_become_pass: "{{ lookup('ansible.builtin.env', 'KALI_PASSWORD') }}"
+          user_home: "/home/{{ ansible_user }}"
+        debianvm:
+          ansible_host: "{{ lookup('ansible.builtin.env', 'DEBIAN_HOST') }}"
+          ansible_user: "{{ lookup('ansible.builtin.env', 'DEBIAN_USERNAME') }}"
+          ansible_become_pass: "{{ lookup('ansible.builtin.env', 'DEBIAN_PASSWORD') }}"
+          user_home: "/home/{{ ansible_user }}"
+        freebsdvm:
+          ansible_host: "{{ lookup('ansible.builtin.env', 'FREEBSD_HOST') }}"
+          ansible_user: "{{ lookup('ansible.builtin.env', 'FREEBSD_USERNAME') }}"
+          ansible_become_pass: "{{ lookup('ansible.builtin.env', 'FREEBSD_PASSWORD') }}"
+          ansible_python_interpreter: /usr/local/bin/python3.9
+          user_home: "/home/{{ ansible_user }}"
+          set_root_pw: "{{ lookup('ansible.builtin.env', 'FREEBSD_ROOT_PASSWORD') }}"
+    wsl:
+      hosts:
+        wsl_debian:
+          ansible_host: localhost
+          ansible_user: "{{ lookup('ansible.builtin.env', 'DEBIAN_WSL_USERNAME') }}"
+          ansible_become_pass: "{{ lookup('ansible.builtin.env', 'DEBIAN_WSL_PASSWORD') }}"
+          user_home: "/home/{{ ansible_user }}"

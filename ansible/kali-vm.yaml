@@ -1,0 +1,6 @@
+- hosts: kalivm
+  roles:
+    - common-apt
+    - friendly-shell
+    - desktop-apps
+    - kali-base

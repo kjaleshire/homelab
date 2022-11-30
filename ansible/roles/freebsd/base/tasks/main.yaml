@@ -1,0 +1,76 @@
+- name: Install packages & enable Linux compat
+  become: true
+  block:
+    # - name: Make sure the time is correct
+    #   command: ntpdate time.nist.gov
+    - name: Disable ssh root login
+      lineinfile:
+        dest: /etc/ssh/sshd_config
+        regexp: "^PermitRootLogin"
+        line: "PermitRootLogin no"
+    - name: Install base packages
+      community.general.pkgng:
+        name:
+          - avahi
+          - curl
+          - dash
+          - gtar
+          - libnss-cache
+          - nano
+          - ntp
+          - py39-pip
+          - pwgen
+          - rsync
+          - tmux
+          - unzip
+          - wget
+        state: latest
+    - name: Enable ntp
+      service:
+        name: ntpd
+        state: started
+        enabled: true
+    - name: Set auto update to daily
+      lineinfile:
+        dest: /etc/crontab
+        regexp: freebsd-update cron
+        line: "@daily                                  root    freebsd-update cron"
+    - name: Check if ports is installed
+      stat:
+        path: /usr/ports
+      register: ports_installed
+    - name: Bootstrap ports as necessary
+      command: portsnap fetch extract
+      when: ports_installed.stat.exists == False
+    - name: Update ports directory
+      command: portsnap fetch update
+    - name: Install base ports
+      environment:
+        BATCH: 'yes'
+      shell: |
+        cd /usr/ports/{{ item }}
+        pkg info -e {{ item }}
+        [ $? = 1 ] && make reinstall && make clean
+        exit 0
+      loop:
+        - devel/git
+        - sysutils/htop
+- name: Install Rust-based tools
+  community.general.cargo:
+    name:
+      - bat
+      - exa
+      - lsd
+      - ripgrep
+      - zoxide
+    state: latest
+  environment:
+    PATH: "{{ user_home }}/.cargo/bin:{{ ansible_env.PATH }}"
+- name: Copy VM private/public keys
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ user_home }}/.ssh/{{ item.dest }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { src: 'vm', dest: 'id_ed25519', mode: 0600 }
+    - { src: 'vm.pub', dest: 'id_ed25519.pub', mode: 0644 }

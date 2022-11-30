@@ -1,0 +1,4 @@
+dependencies:
+  - role: common-apt
+  - role: proxmox-base/debian-network-iso
+  # - role: proxmox-base/flatcar-iso

@@ -1,0 +1,10 @@
+dependencies:
+  - role: friendly-shell/asdf
+  - role: friendly-shell/chezmoi
+  - role: friendly-shell/fish
+  - role: friendly-shell/motd
+    become: true
+    tags: motd
+    when: ansible_facts.os_family == "Debian"
+  - role: friendly-shell/oh-my-fish
+  - role: friendly-shell/starship
