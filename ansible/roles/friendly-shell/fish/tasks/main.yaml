@@ -1,12 +1,13 @@
 - name: Gather the package facts
   package_facts:
     manager: auto
+  when: ansible_facts.os_family != 'Darwin'
 - name: Install fish shell (Debian)
   become: true
   when: |
-    ('fish' not in ansible_facts.packages or
-    ansible_facts.packages['fish'][0]['version'] | split('-') | first is version(fish_version, '<')
-    ) and ansible_facts.os_family == 'Debian'
+    ansible_facts.os_family == 'Debian' and ('fish' not in ansible_facts.packages or
+      ansible_facts.packages['fish'][0]['version'] | split('-') | first is version(fish_version, '<')
+    )
   block:
     - name: Add OpenSUSE PGP public key
       shell: wget -qO - https://download.opensuse.org/repositories/shells:fish:release:3/Debian_11/Release.key | gpg --dearmor | tee /etc/apt/keyrings/shells_fish_release_3.gpg
@@ -39,3 +40,10 @@
         name: "{{ ansible_user }}"
         shell: /usr/local/bin/fish
   when: ansible_facts.os_family == 'FreeBSD'
+- name: Install fish shell (macOS)
+  block:
+    - name: Install fish shell (macOS)
+      community.general.homebrew:
+        name: fish
+        update_homebrew: true
+  when: ansible_facts.os_family == 'Darwin'

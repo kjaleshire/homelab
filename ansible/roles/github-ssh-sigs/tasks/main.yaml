@@ -1,7 +1,7 @@
 - name: Add Github SSH signatures to ssh_known_hosts
   become: true
   known_hosts:
-    path: /etc/ssh/ssh_known_hosts
+    path: "{{ user_home }}/.ssh/known_hosts"
     name: github.com
     hash_host: true
     key: |

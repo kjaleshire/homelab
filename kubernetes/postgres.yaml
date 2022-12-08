@@ -61,7 +61,7 @@ spec:
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: postgres-user
+                  name: postgres-admin-user-secret
                   key: password
           ports:
             - containerPort: 5432
@@ -87,12 +87,3 @@ spec:
         - name: postgres-data-volume
           persistentVolumeClaim:
             claimName: postgres-data-claim
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: postgres-user
-  namespace: postgres
-type: Opaque
-data:
-  password: super_secret_base64_password

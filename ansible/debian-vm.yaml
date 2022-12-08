@@ -1,4 +1,4 @@
-- hosts: debianvm
+- hosts: debian_vm
   roles:
     - role: common-apt
       tags: common-apt

@@ -31,6 +31,13 @@
   environment:
     PATH: "{{ user_home }}/.cargo/bin:{{ ansible_env.PATH }}"
   when: ansible_facts.os_family == "FreeBSD"
+- name: Install starship (macOS)
+  block:
+    - name: Install starship (macOS)
+      community.general.homebrew:
+        name: starship
+        update_homebrew: true
+  when: ansible_facts.os_family == 'Darwin'
 - name: Permit starship-specific environment variables over SSH
   become: true
   copy:
@@ -39,3 +46,4 @@
       # PrintLastLog no
     dest: /etc/ssh/sshd_config.d/99-acceptenv-starship-custom.conf
   notify: Reload sshd
+  when: ansible_facts.os_family != 'Darwin'

@@ -11,10 +11,13 @@
 
 Release.key
 
-ansible/roles/files/*
+ansible/files
 
 # kubernetes config
 kubernetes/.kube
+
+# kubernetes secrets
+kubernetes/secrets
 
 # anything inside a build directory
 packer/**/build/

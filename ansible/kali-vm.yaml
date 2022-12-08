@@ -1,4 +1,4 @@
-- hosts: kalivm
+- hosts: kali_vm
   roles:
     - common-apt
     - friendly-shell

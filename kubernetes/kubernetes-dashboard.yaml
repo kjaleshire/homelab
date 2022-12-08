@@ -288,6 +288,17 @@ spec:
         - name: tmp-volume
           emptyDir: {}
 ---
+# Redirect to https
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: https-redirect
+  namespace: kubernetes-dashboard
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true
+---
 apiVersion: traefik.containo.us/v1alpha1
 kind: IngressRoute
 metadata:
@@ -295,10 +306,14 @@ metadata:
   namespace: kubernetes-dashboard
 spec:
   entryPoints:
+    - web
     - websecure
   routes:
     - match: Host(`kates.flight.kja.us`)
       kind: Rule
+      middlewares:
+        - name: https-redirect
+          namespace: kubernetes-dashboard
       services:
         - name: kubernetes-dashboard
           namespace: kubernetes-dashboard

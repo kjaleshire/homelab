@@ -26,12 +26,13 @@ variable "ssh_username" {
 
 variable "ssh_password" {
   type      = string
-  default   = ""
+  default   = env("KATES_PASSWORD")
   sensitive = true
 }
 
 variable "password_crypted" {
   type      = string
-  default   = ""
+  # /etc/shadow format: salt + password > sha-512
+  default   = env("KATES_PASSWORD_CRYPTED")
   sensitive = true
 }

@@ -12,14 +12,13 @@ variable "ssh_username" {
 
 variable "ssh_password" {
   type      = string
-  default   = ""
+  default   = env("DEBIAN_PASSWORD")
   sensitive = true
 }
 
 variable "password_crypted" {
   type      = string
-  # salt + password > sha-512
-  # /etc/shadow format
-  default   = ""
+  # /etc/shadow format: salt + password > sha-512
+  default   = env("DEBIAN_PASSWORD_CRYPTED")
   sensitive = true
 }

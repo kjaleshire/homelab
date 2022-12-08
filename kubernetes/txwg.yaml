@@ -17,20 +17,6 @@ spec:
   selector:
     app: txwg
 ---
-kind: Service
-apiVersion: v1
-metadata:
-  labels:
-    app: txwg
-  name: txwg-commander
-  namespace: txwg
-spec:
-  ports:
-    - port: 80
-      targetPort: 8000
-  selector:
-    app: txwg
----
 # Redirect to https
 apiVersion: traefik.containo.us/v1alpha1
 kind: Middleware
@@ -64,28 +50,6 @@ spec:
           kind: Service
           scheme: http
 ---
-apiVersion: traefik.containo.us/v1alpha1
-kind: IngressRoute
-metadata:
-  name: txwg-commander
-  namespace: txwg
-spec:
-  entryPoints:
-    - web
-    - websecure
-  routes:
-    - match: Host(`txfiles.flight.kja.us`)
-      kind: Rule
-      middlewares:
-        - name: https-redirect
-          namespace: txwg
-      services:
-        - name: txwg-commander
-          namespace: txwg
-          port: 80
-          kind: Service
-          scheme: http
----
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -100,27 +64,6 @@ spec:
   resources:
     requests:
       storage: 160Gi
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: wireguard-configmap
-  namespace: txwg
-data:
-  wireguard_config_data: |
-    [Interface]
-    PrivateKey = super_secret_wireguard_private_key
-    Address = wireguard_address
-    # DNS = 8.8.8.8
-    DNS = wireguard_dns
-    # ListenPort = 51820
-    PostUp = DROUTE=$(ip route | grep default | awk '{print $3}'); ip route add 10.42.0.0/19 via $DROUTE; ip route add 10.0.0.0/24 via $DROUTE; ip route add 192.168.1.0/24 via $DROUTE; iptables -A OUTPUT -d 10.42.0.0/19 -j ACCEPT; iptables -I OUTPUT -d 10.0.0.0/24 -j ACCEPT; iptables -I OUTPUT -d 192.168.1.0/24 -j ACCEPT; iptables -A OUTPUT ! -o %i -m mark ! --mark $(wg show %i fwmark) -m addrtype ! --dst-type LOCAL -j REJECT
-    PreDown = DROUTE=$(ip route | grep default | awk '{print $3}'); ip route del 192.168.1.0/24 via $DROUTE; ip route del 10.0.0.0/24 via $DROUTE; ip route del 10.42.0.0/19 via $DROUTE; iptables -D OUTPUT ! -o %i -m mark ! --mark $(wg show %i fwmark) -m addrtype ! --dst-type LOCAL -j REJECT; iptables -D OUTPUT -d 192.168.1.0/24 -j ACCEPT; iptables -D OUTPUT -d 10.0.0.0/24 -j ACCEPT; iptables -D OUTPUT -d 10.42.0.0/19 -j ACCEPT
-
-    [Peer]
-    PublicKey = wireguard_public_key
-    Endpoint = wireguardendpoint:wireguardport
-    AllowedIPs = 0.0.0.0/0
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -191,7 +134,10 @@ spec:
             - name: USER
               value: "kja"
             - name: PASS
-              value: "transmission_password"
+              valueFrom:
+                secretKeyRef:
+                  name: transmission-secret
+                  key: password
             - name: PEERPORT
               value: "44306"
             - name: PUID
@@ -227,12 +173,12 @@ spec:
               readOnly: false
       volumes:
         - name: wireguard-config-volume
-          configMap:
+          secret:
             items:
               - key: wireguard_config_data
                 path: wg0.conf
                 mode: 0600
-            name: wireguard-configmap
+            secretName: wireguard-config-secret
         - name: host-lib-modules-volume
           hostPath:
             path: /lib/modules

@@ -4,6 +4,17 @@ kind: Namespace
 metadata:
   name: traefik-dashboard
 ---
+# Redirect to https
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: https-redirect
+  namespace: traefik-dashboard
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true
+---
 apiVersion: traefik.containo.us/v1alpha1
 kind: IngressRoute
 metadata:
@@ -11,10 +22,14 @@ metadata:
   namespace: traefik-dashboard
 spec:
   entryPoints:
+    - web
     - websecure
   routes:
     - match: Host(`traefik.flight.kja.us`)
       kind: Rule
+      middlewares:
+        - name: https-redirect
+          namespace: traefik-dashboard
       services:
         - name: api@internal
           kind: TraefikService
@@ -100,13 +115,3 @@ metadata:
 spec:
   basicAuth:
     secret: traefik-basic-auth
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: traefik-basic-auth
-  namespace: kube-system
-data:
-# htpasswd -nb username password | openssl base64
-  users: |2
-    super_secret_base64_password

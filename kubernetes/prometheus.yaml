@@ -18,6 +18,17 @@ spec:
   selector:
     app: prometheus
 ---
+# Redirect to https
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: https-redirect
+  namespace: prometheus
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true
+---
 apiVersion: traefik.containo.us/v1alpha1
 kind: IngressRoute
 metadata:
@@ -25,10 +36,14 @@ metadata:
   namespace: prometheus
 spec:
   entryPoints:
+    - web
     - websecure
   routes:
     - match: Host(`prometheus.flight.kja.us`)
       kind: Rule
+      middlewares:
+        - name: https-redirect
+          namespace: prometheus
       services:
         - name: prometheus
           namespace: prometheus

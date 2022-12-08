@@ -1,4 +1,4 @@
-- hosts: freebsdvm
+- hosts: freebsd_vm
   roles:
     - freebsd/base
     - friendly-shell

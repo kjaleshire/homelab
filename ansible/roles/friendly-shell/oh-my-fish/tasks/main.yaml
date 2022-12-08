@@ -3,7 +3,7 @@
     path: "{{ user_home }}/.local/share/omf/pkg/omf/functions/omf.fish"
   register: omf_function
 - name: Install oh-my-fish
-  when: omf_function.stat.exists == False
+  when: ansible_facts.os_family != 'Darwin' and omf_function.stat.exists == False
   block:
     - name: Install zoxide deb package
       become: true

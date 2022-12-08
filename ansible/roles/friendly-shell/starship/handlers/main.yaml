@@ -3,3 +3,4 @@
   systemd:
     name: ssh
     state: reloaded
+  when: ansible_facts.os_family == 'Debian'

@@ -21,29 +21,31 @@ all:
       children:
         kates_servers:
         kates_workers:
-    local_vms:
-      hosts:
-        kalivm:
-          ansible_host: "{{ lookup('ansible.builtin.env', 'KALI_HOST') }}"
-          ansible_user: "{{ lookup('ansible.builtin.env', 'KALI_USERNAME') }}"
-          ansible_become_pass: "{{ lookup('ansible.builtin.env', 'KALI_PASSWORD') }}"
-          user_home: "/home/{{ ansible_user }}"
-        debianvm:
-          ansible_host: "{{ lookup('ansible.builtin.env', 'DEBIAN_HOST') }}"
-          ansible_user: "{{ lookup('ansible.builtin.env', 'DEBIAN_USERNAME') }}"
-          ansible_become_pass: "{{ lookup('ansible.builtin.env', 'DEBIAN_PASSWORD') }}"
-          user_home: "/home/{{ ansible_user }}"
-        freebsdvm:
-          ansible_host: "{{ lookup('ansible.builtin.env', 'FREEBSD_HOST') }}"
-          ansible_user: "{{ lookup('ansible.builtin.env', 'FREEBSD_USERNAME') }}"
-          ansible_become_pass: "{{ lookup('ansible.builtin.env', 'FREEBSD_PASSWORD') }}"
-          ansible_python_interpreter: /usr/local/bin/python3.9
-          user_home: "/home/{{ ansible_user }}"
-          set_root_pw: "{{ lookup('ansible.builtin.env', 'FREEBSD_ROOT_PASSWORD') }}"
-    wsl:
-      hosts:
-        wsl_debian:
-          ansible_host: localhost
-          ansible_user: "{{ lookup('ansible.builtin.env', 'DEBIAN_WSL_USERNAME') }}"
-          ansible_become_pass: "{{ lookup('ansible.builtin.env', 'DEBIAN_WSL_PASSWORD') }}"
-          user_home: "/home/{{ ansible_user }}"
+  hosts:
+    debian_vm:
+      ansible_host: "{{ lookup('ansible.builtin.env', 'DEBIAN_HOST') }}"
+      ansible_user: "{{ lookup('ansible.builtin.env', 'DEBIAN_USERNAME') }}"
+      ansible_become_pass: "{{ lookup('ansible.builtin.env', 'DEBIAN_PASSWORD') }}"
+      user_home: "/home/{{ ansible_user }}"
+    debian_wsl:
+      ansible_host: localhost
+      ansible_user: "{{ lookup('ansible.builtin.env', 'DEBIAN_WSL_USERNAME') }}"
+      ansible_become_pass: "{{ lookup('ansible.builtin.env', 'DEBIAN_WSL_PASSWORD') }}"
+      user_home: "/home/{{ ansible_user }}"
+    freebsd_vm:
+      ansible_host: "{{ lookup('ansible.builtin.env', 'FREEBSD_HOST') }}"
+      ansible_user: "{{ lookup('ansible.builtin.env', 'FREEBSD_USERNAME') }}"
+      ansible_become_pass: "{{ lookup('ansible.builtin.env', 'FREEBSD_PASSWORD') }}"
+      ansible_python_interpreter: /usr/local/bin/python3.9
+      user_home: "/home/{{ ansible_user }}"
+      set_root_pw: "{{ lookup('ansible.builtin.env', 'FREEBSD_ROOT_PASSWORD') }}"
+    kali_vm:
+      ansible_host: "{{ lookup('ansible.builtin.env', 'KALI_HOST') }}"
+      ansible_user: "{{ lookup('ansible.builtin.env', 'KALI_USERNAME') }}"
+      ansible_become_pass: "{{ lookup('ansible.builtin.env', 'KALI_PASSWORD') }}"
+      user_home: "/home/{{ ansible_user }}"
+    macos:
+      ansible_host: localhost
+      ansible_user: "{{ lookup('ansible.builtin.env', 'MACOS_USERNAME') }}"
+      ansible_become_pass: "{{ lookup('ansible.builtin.env', 'MACOS_PASSWORD') }}"
+      user_home: "/Users/{{ ansible_user }}"

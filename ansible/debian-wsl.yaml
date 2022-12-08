@@ -1,4 +1,4 @@
-- hosts: wsl_debian
+- hosts: debian_wsl
   roles:
     - role: common-apt
       tags: common-apt
