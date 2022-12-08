@@ -19,7 +19,7 @@ This will spin up a 3+3 master+worker cluster configuration in a few minutes wit
 First, enable and start SSH on the VMs:
 
 ``` shell
-sudo apt install -y ssh
+sudo apt install -y openssh-server
 sudo systemctl enable --now ssh
 ```
 
@@ -33,13 +33,20 @@ Using `ssh-copy-id` if the public key is on the filesystem:
 ssh-copy-id -i ~/.ssh/id_ed25519 $KALI_USERNAME@$KALI_HOST
 ```
 
-Or if using 1Password as the SSH agent:
+Or if using 1Password as the SSH agent (public key auth temporarily disabled):
 
 ```shell
-ssh $KALI_USERNAME@$KALI_HOST "sed -i '' /$KEY_NAME\$/d ~/.ssh/authorized_keys; echo $(ssh-add -L | grep "$KEY_NAME\$") >> ~/.ssh/authorized_keys"
+ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no $KALI_USERNAME@$KALI_HOST "mkdir -p ~/.ssh; touch ~/.ssh/authorized_keys; sed -i /$KEY_NAME\$/d ~/.ssh/authorized_keys; echo $(ssh-add -L | grep "$KEY_NAME\$") >> ~/.ssh/authorized_keys"
 ```
 
 Where `$KEY_NAME` is the name of the key in 1Password.
+
+Next copy the VM-special private/public keypair so certain private repositories can be cloned:
+
+```shell
+scp ~/Downloads/id_ed25519 $KALI_USERNAME@$KALI_HOST:/home/kali/.ssh/id_ed25519
+ssh $KALI_USERNAME@$KALI_HOST "chmod 0600 ~/.ssh/id_ed25519;echo $(ssh-add -L | grep "virtual-machine\$") > ~/.ssh/id_ed25519.pub"
+```
 
 Now you can run the provisioner playbooks:
 

@@ -3,20 +3,14 @@
   apt:
     pkg:
       - avahi-daemon
-      - avahi-utils
-      - bat
-      - bpftrace
       - curl
       - dash
-      - exa
       - git
-      - htop
       - libnss-mdns
       - lsb-release
       - nano
       - pip
       - pwgen
-      - ripgrep
       - sudo
       - tmux
       - unzip

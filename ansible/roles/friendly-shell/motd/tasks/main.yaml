@@ -2,9 +2,12 @@
   apt:
     pkg:
       - figlet
-      - hddtemp
       - lm-sensors
       - verse
+- name: Install hddtemp (Debian)
+  apt:
+    pkg: hddtemp
+  when: ansible_facts.os_family == "Debian" and ansible_facts.distribution == "Debian"
 - name: Erase existing motd files & fancy-motd directory
   file:
     path: "{{ item }}"

@@ -1,8 +1,19 @@
-- name: Allow the debian user to run any commands as root
+- name: Provision Debian
   become: true
-  community.general.sudoers:
-    name: debian-sudo
-    user: debian
-    nopassword: false
-    runas: root
-    commands: ALL
+  block:
+    - name: Allow the debian user to run any commands as root
+      community.general.sudoers:
+        name: debian-sudo
+        user: debian
+        nopassword: false
+        runas: root
+        commands: ALL
+    - name: Install base packages
+      apt:
+        pkg:
+          - avahi-utils
+          - bat
+          - bpftrace
+          - exa
+          - htop
+          - ripgrep
