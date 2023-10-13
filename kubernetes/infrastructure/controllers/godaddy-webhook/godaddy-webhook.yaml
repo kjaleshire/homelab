@@ -1,0 +1,39 @@
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: godaddy-webhook-gitrepo
+  namespace: cert-manager
+spec:
+  interval: 30m
+  # Using fork because of this issue: https://github.com/snowdrop/godaddy-webhook/issues/16
+  url: https://github.com/hof/godaddy-webhook
+  # url: https://github.com/snowdrop/godaddy-webhook
+  ref:
+    branch: main
+  ignore: |-
+    # exclude all
+    /*
+    # include chart directory
+    !/deploy/helm
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: godaddy-webhook
+  namespace: cert-manager
+spec:
+  interval: 30m
+  releaseName: godaddy-webhook
+  chart:
+    spec:
+      chart: deploy/helm
+      sourceRef:
+        kind: GitRepository
+        name: godaddy-webhook-gitrepo
+        namespace: cert-manager
+  values:
+    certManager:
+      serviceAccountName: cert-manager
+    groupName: flight.kja.us
+---

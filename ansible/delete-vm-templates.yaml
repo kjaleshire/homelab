@@ -1,3 +1,0 @@
-- hosts: proxmox_nodes
-  roles:
-    - delete-vm-templates

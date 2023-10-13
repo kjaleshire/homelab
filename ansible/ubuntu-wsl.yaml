@@ -1,0 +1,6 @@
+- hosts: ubuntu_wsl
+  roles:
+    - common-apt
+    - friendly-shell
+    - rust-lang
+    - debian-base

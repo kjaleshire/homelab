@@ -9,3 +9,10 @@
       apt:
         pkg: code-oss
         state: absent
+    - name: Install other deb packages
+      tags: other-debs
+      apt:
+        deb: "{{ item }}"
+      loop:
+        - "https://update.u.is/downloads/linux/utopia-latest.amd64.deb"
+# Also install i2p (https://geti2p.net/en/), tor, zeronet

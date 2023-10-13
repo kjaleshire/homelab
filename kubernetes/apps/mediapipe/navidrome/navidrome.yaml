@@ -1,0 +1,92 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: navidrome
+  namespace: mediapipe
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: app-template
+      version: "1.5.1"
+      sourceRef:
+        kind: HelmRepository
+        name: bjw-s
+        namespace: flux-system
+      interval: 30m
+  values:
+    controller:
+      type: statefulset
+
+    image:
+      repository: ghcr.io/navidrome/navidrome
+      tag: "0.49.3"
+
+    env:
+      ND_DATAFOLDER: /data
+      ND_ENABLEDOWNLOADS: "true"
+      ND_ENABLEEXTERNALSERVICES: "false"
+      ND_ENABLESHARING: "false"
+      ND_ENABLESTARRATING: "false"
+      ND_LASTFM_ENABLED: "true"
+      ND_LISTENBRAINZ_ENABLED: "true"
+      ND_LOGLEVEL: info
+      ND_MUSICFOLDER: /music
+      ND_PORT: &port 4533
+      ND_PROMETHEUS_ENABLED: "true"
+      ND_SCANSCHEDULE: 30m
+
+    service:
+      main:
+        ports:
+          http:
+            port: *port
+
+    ingress:
+      main:
+        annotations: {}
+        enabled: true
+        hosts:
+          - host: &host navidrome.flight.kja.us
+            paths:
+              - path: /
+                pathType: Prefix
+        ingressClassName: nginx
+        tls:
+          - hosts:
+              - *host
+
+    podSecurityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      fsGroup: 1000
+      fsGroupChangePolicy: "OnRootMismatch"
+      supplementalGroups:
+        - 65539
+
+    resources:
+      {}
+      # limits:
+      #   cpu: 5m
+      #   memory: 799M
+      # requests:
+      #   cpu: 5m
+      #   memory: 799M
+
+    persistence:
+      config:
+        enabled: true
+        hostPath: /data/navidrome
+        mountPath: /data
+        type: hostPath
+      music:
+        enabled: true
+        hostPath: /data/media/music
+        mountPath: /music
+        type: hostPath
+    serviceMonitor:
+      main:
+        enabled: true
+---
+

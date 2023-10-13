@@ -1,0 +1,51 @@
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: openssh-server-image-repository
+  namespace: utility-belt
+spec:
+  image: docker.io/linuxserver/openssh-server
+  interval: 30m0s
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: utility-belt-image-policy
+  namespace: utility-belt
+spec:
+  imageRepositoryRef:
+    name: openssh-server-image-repository
+  filterTags:
+    pattern: '^(?P<version>9\.[0-9]{1,2})_p(?P<patch>[0-9]{1,2})-r(?P<rev>[0-9]{1,2})-ls(?P<lsrev>[0-9]+)$'
+    extract: '$version$patch$rev$lsrev'
+  policy:
+    semver:
+      range: ~9.0
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta1
+kind: ImageUpdateAutomation
+metadata:
+  name: utility-belt-image-update-automation
+  namespace: utility-belt
+spec:
+  interval: 30m0s
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  git:
+    checkout:
+      ref:
+        branch: master
+    commit:
+      author:
+        email: flux@noreply.kja.us
+        name: Flux
+      messageTemplate: '{{range .Updated.Images}}{{println .}}{{end}}'
+    push:
+      branch: master
+  update:
+    path: ./kubernetes/apps/utility-belt
+    strategy: Setters
+---

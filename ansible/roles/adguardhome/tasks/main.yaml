@@ -1,0 +1,17 @@
+- name: Install & configure AdGuardHome
+  become: true
+  tags:
+    - adguardhome
+    - dns
+  block:
+    - name: Install AdGuardHome
+      shell: |
+        curl -s -S -L https://raw.githubusercontent.com/AdguardTeam/AdGuardHome/master/scripts/install.sh | sh -s -- -v -r
+    - name: Copy AdGuardHome config
+      template:
+        src: AdGuardHome.yaml.j2
+        dest: /opt/AdGuardHome/AdGuardHome.yaml
+        owner: root
+        group: root
+        mode: 0644
+  notify: Restart AdGuardHome

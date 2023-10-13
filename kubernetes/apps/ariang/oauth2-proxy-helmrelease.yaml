@@ -1,0 +1,70 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: oauth2-proxy
+  namespace: ariang
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: oauth2-proxy
+      sourceRef:
+        kind: HelmRepository
+        name: oauth2-proxy
+        namespace: flux-system
+      interval: 30m
+  values:
+    config:
+      existingSecret: oauth2-proxy-secret
+    extraArgs:
+      - --cookie-domain=flight.kja.us
+      - --provider=github
+      - --redirect-url=https://ariang.flight.kja.us/oauth2/callback
+      - --provider-display-name=Gitea
+      - --login-url=https://gitea.flight.kja.us/login/oauth/authorize
+      - --redeem-url=https://gitea.flight.kja.us/login/oauth/access_token
+      - --validate-url=https://gitea.flight.kja.us/api/v1
+
+    # extraVolumes:
+    #   - name: flight-ca-secret-volume
+    #     secret:
+    #       secretName: flight-ca-secret
+    # extraVolumeMounts:
+    #   - name: flight-ca-secret-volume
+    #     readOnly: true
+    #     mountPath: /etc/ssl/certs/flight-ca.pem
+    #     subPath: flight-ca.pem
+
+    # might be necessary to downgrade because of this issue:
+    # https://github.com/oauth2-proxy/oauth2-proxy/issues/1636
+    image:
+      tag: v7.2.0
+
+    metrics:
+      enabled: true
+      servicemonitor:
+        enabled: true
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: oauth2-proxy
+  namespace: ariang
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: &host ariang.flight.kja.us
+      http:
+        paths:
+          - path: /oauth2
+            pathType: Prefix
+            backend:
+              service:
+                name: oauth2-proxy
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - *host
+---

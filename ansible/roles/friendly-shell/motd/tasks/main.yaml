@@ -1,38 +1,48 @@
-- name: Install figlet & temp utilities
-  apt:
-    pkg:
-      - figlet
-      - lm-sensors
-      - verse
-- name: Install hddtemp (Debian)
-  apt:
-    pkg: hddtemp
-  when: ansible_facts.os_family == "Debian" and ansible_facts.distribution == "Debian"
-- name: Erase existing motd files & fancy-motd directory
-  file:
-    path: "{{ item }}"
-    state: absent
-  loop: ["/etc/motd", "/etc/update-motd.d/10-uname", "/etc/update-motd.d/fancy-motd"]
-- name: Copy fancy-motd files
-  copy:
-    src: fancy-motd
-    dest: /etc/update-motd.d/
-    mode: 0755
-- name: Copy fancy-motd invoker
-  copy:
-    src: 99-fancy-motd
-    dest: /etc/update-motd.d/99-fancy-motd
-    mode: 0755
-- name: Copy figlet fonts
-  copy:
-    src: "fonts/{{ item }}"
-    dest: "/usr/share/figlet/{{ item }}"
-    mode: 0644
-  loop:
-    # - Alligator2.flf
-    # - AMC Slash.flf
-    # - ANSI Shadow.flf
-    # - Georgia11.flf
-    # - Lean.flf
-    - Nancyj-Improved.flf
-    # - Univers.flf
+- name: Install fancy motd
+  tags: ["motd", "friendly-shell"]
+  when: ansible_facts.os_family == "Debian"
+  become: true
+  block:
+    - name: Install figlet & temp utilities
+      apt:
+        pkg:
+          - figlet
+          - lm-sensors
+          - verse
+    - name: Install hddtemp (Debian)
+      apt:
+        pkg: hddtemp
+      when: ansible_facts.os_family == "Debian" and ansible_facts.distribution == "Debian"
+    - name: Erase existing motd files & fancy-motd directory
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        [
+          "/etc/motd",
+          "/etc/update-motd.d/10-uname",
+          "/etc/update-motd.d/fancy-motd",
+        ]
+    - name: Copy fancy-motd files
+      copy:
+        src: fancy-motd
+        dest: /etc/update-motd.d/
+        mode: 0755
+    - name: Copy fancy-motd invoker
+      copy:
+        src: 99-fancy-motd
+        dest: /etc/update-motd.d/99-fancy-motd
+        mode: 0755
+    - name: Copy figlet fonts
+      copy:
+        src: "fonts/{{ item }}"
+        dest: "/usr/share/figlet/{{ item }}"
+        mode: 0644
+      loop:
+        # - Alligator2.flf
+        # - AMC Slash.flf
+        # - ANSI Shadow.flf
+        # - Georgia11.flf
+        # - Lean.flf
+        - Nancyj-Improved.flf
+        # - Univers.flf

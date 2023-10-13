@@ -1,25 +1,66 @@
-- name: Install apt packages
+- name: Install common packages
   become: true
-  apt:
-    pkg:
-      - avahi-daemon
-      - curl
-      - dash
-      - git
-      - libnss-mdns
-      - lsb-release
-      - nano
-      - pip
-      - pwgen
-      - sudo
-      - tmux
-      - unzip
-      - wget
-- name: Install other deb packages
-  become: true
-  tags: other-debs
-  apt:
-    deb: "{{ item }}"
-  loop:
-    - "https://github.com/Peltoche/lsd/releases/download/{{ lsd_version }}/lsd_{{ lsd_version }}_amd64.deb"
-    - "https://github.com/dandavison/delta/releases/download/{{ delta_version }}/git-delta_{{ delta_version }}_amd64.deb"
+  tags: common-apt
+  block:
+    - name: Create /etc/apt/keyrings directory
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+    - name: Install apt dependencies
+      apt:
+        pkg:
+          - curl
+          - wget
+        update_cache: true
+    # for bashtop
+    - name: Add Azlux repository pubkey
+      shell: wget -O /etc/apt/keyrings/azlux-archive-keyring.gpg https://azlux.fr/repo.gpg
+    - name: Add Azlux repository source
+      apt_repository:
+        repo: deb [signed-by=/etc/apt/keyrings/azlux-archive-keyring.gpg] https://packages.azlux.fr/debian/ stable main
+        filename: azlux
+        state: present
+    - name: Install apt packages
+      apt:
+        pkg:
+          # - avahi-daemon
+          # - bashtop # doesn't exist in azlux bookworm now
+          - build-essential
+          # https://computingforgeeks.com/encrypt-ubuntu-debian-disk-partition-using-cryptsetup/
+          - cryptsetup
+          - dash
+          - git
+          - iotop
+          - libbz2-dev
+          - libgdbm-dev
+          - libffi-dev
+          - liblzma-dev
+          - libncurses5-dev
+          # - libnss-mdns
+          - libnss3-dev
+          - libreadline-dev
+          - libsqlite3-dev
+          - libssl-dev
+          - libyaml-dev
+          - lsb-release
+          - lsd
+          - mc
+          - nano
+          - pg-activity
+          - pip
+          - progress
+          - pwgen
+          - sudo
+          - tmux
+          - tree
+          - ufw
+          - unzip
+          - zlib1g-dev
+        update_cache: true
+    - name: Install other deb packages
+      tags: other-debs
+      apt:
+        deb: "{{ item }}"
+      loop:
+        - "https://github.com/dandavison/delta/releases/download/{{ delta_version }}/git-delta-musl_{{ delta_version }}_amd64.deb"
+        - "https://github.com/ajeetdsouza/zoxide/releases/download/v{{ zoxide_version }}/zoxide_{{ zoxide_version }}_amd64.deb"

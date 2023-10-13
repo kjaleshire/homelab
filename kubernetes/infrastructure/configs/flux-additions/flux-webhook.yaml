@@ -1,0 +1,42 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+    nginx.ingress.kubernetes.io/use-regex: "true"
+  name: webhook-receiver
+  namespace: flux-system
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: &host flux.flight.kja.us
+    http:
+      paths:
+      - pathType: Prefix
+        path: /?(.*)
+        backend:
+          service:
+            name: webhook-receiver
+            port:
+              number: 80
+  tls:
+    - hosts:
+        - *host
+---
+apiVersion: notification.toolkit.fluxcd.io/v1
+kind: Receiver
+metadata:
+  name: flux-system
+  namespace: flux-system
+spec:
+  type: github
+  events:
+    - "ping"
+    - "push"
+  secretRef:
+    name: flux-webhook-secret
+  resources:
+    - kind: GitRepository
+      name: flux-system
+---

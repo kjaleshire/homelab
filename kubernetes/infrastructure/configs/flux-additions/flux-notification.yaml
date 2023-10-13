@@ -1,0 +1,36 @@
+---
+apiVersion: notification.toolkit.fluxcd.io/v1beta2
+kind: Provider
+metadata:
+  name: telegram
+  namespace: flux-system
+spec:
+  type: telegram
+  address: https://api.telegram.org
+  # Outland Notifications
+  channel: "0000000000"
+  secretRef:
+    name: flux-notification-secret
+---
+apiVersion: notification.toolkit.fluxcd.io/v1beta2
+kind: Alert
+metadata:
+  name: flux-configs-alert
+  namespace: flux-system
+spec:
+  summary: flux configs alert
+  providerRef:
+    name: telegram
+  eventSeverity: info
+  eventSources:
+    # - kind: GitRepository
+    #   name: '*'
+    - kind: HelmRelease
+      name: '*'
+    # - kind: HelmRepository
+    #   name: '*'
+    - kind: ImageUpdateAutomation
+      name: '*'
+    # - kind: Kustomization
+    #   name: '*'
+---

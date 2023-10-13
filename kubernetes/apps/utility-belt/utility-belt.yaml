@@ -1,0 +1,87 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: utility.flight.kja.us
+  name: utility-belt
+  namespace: utility-belt
+spec:
+  selector:
+    app: utility-belt
+  ports:
+    - port: 6938
+      targetPort: ssh
+      name: ssh
+  type: LoadBalancer
+  loadBalancerIP: "10.45.1.14"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: utility-belt-volume-claim
+  namespace: utility-belt
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  # storageClassName: local-path
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: utility-belt
+  namespace: utility-belt
+  labels:
+    app: utility-belt
+spec:
+  selector:
+    matchLabels:
+      app: utility-belt
+  replicas: 1
+  serviceName: utility-belt
+  template:
+    metadata:
+      labels:
+        app: utility-belt
+    spec:
+      containers:
+        - env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: SUDO_ACCESS
+              value: "true"
+            - name: TZ
+              value: America/New_York
+            - name: USER_NAME
+              value: kja
+          envFrom:
+            - secretRef:
+                name: utility-belt-secret
+          image: docker.io/linuxserver/openssh-server:9.3_p2-r0-ls125 # {"$imagepolicy": "utility-belt:utility-belt-image-policy"}
+          name: utility-belt
+          ports:
+            - containerPort: 2222
+              name: ssh
+          resources: {}
+          volumeMounts:
+            - mountPath: /data
+              name: utility-belt-data-volume
+            - mountPath: /media
+              name: host-media-volume
+              readOnly: false
+            - mountPath: /tmp
+              name: tmpfs
+      volumes:
+        - name: utility-belt-data-volume
+          persistentVolumeClaim:
+            claimName: utility-belt-volume-claim
+        - hostPath:
+            path: /data/media
+            type: Directory
+          name: host-media-volume
+        - emptyDir: {}
+          name: tmpfs

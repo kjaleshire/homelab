@@ -1,0 +1,135 @@
+- name: Install & configure wireguard
+  become: true
+  tags: wireguard
+  block:
+    - name: Install wireguard & utilities
+      apt:
+        pkg:
+          # if you wanted to print QR codes right in the terminal
+          # - qrencode
+          - wireguard
+        update_cache: true
+    - name: Allow wireguard port through the firewall
+      community.general.ufw:
+        rule: allow
+        port: "{{ wireguard_port }}"
+        proto: udp
+    # sudo ufw route allow in on wg0 out on eno1
+    # sudo ip6tables -t nat -I POSTROUTING -o eno1 -j MASQUERADE
+    # sudo iptables -t nat -I POSTROUTING -o eno1 -j MASQUERADE
+    - name: Allow forwarded traffic between Wireguard & ethernet
+      community.general.ufw:
+        interface_in: wg0
+        interface_out: "{{ default_interface }}"
+        route: true
+        rule: allow
+    - name: NAT for egressing Wireguard traffic (IPv4)
+      iptables:
+        chain: POSTROUTING
+        ip_version: ipv4
+        jump: MASQUERADE
+        table: nat
+        out_interface: "{{ default_interface }}"
+    - name: NAT for egressing Wireguard traffic (IPv6)
+      iptables:
+        chain: POSTROUTING
+        ip_version: ipv6
+        jump: MASQUERADE
+        out_interface: "{{ default_interface }}"
+        table: nat
+    # Remove the above 3 firewall statements with:
+    # ufw route delete allow in on wg0 out on eno1
+    # iptables -t nat -D POSTROUTING -o eno1 -j MASQUERADE
+    # ip6tables -t nat -D POSTROUTING -o eno1 -j MASQUERADE
+    # - name: Check if server private key is already generated
+    #   stat:
+    #     path: /etc/wireguard/private.key
+    #   register: private_key
+    # - name: Generate wireguard server private key
+    #   shell: |
+    #     wg genkey > /etc/wireguard/private.key
+    #   when: private_key.stat.exists == False
+    # - name: Read wireguard server private key
+    #   command: cat /etc/wireguard/private.key
+    #   register: wireguard_private_key
+    # - name: Set server  private key permissions
+    #   command: chmod go= /etc/wireguard/private.key
+    # - name: Generate server wireguard public key
+    #   shell: cat /etc/wireguard/private.key | wg pubkey | tee /etc/wireguard/public.key
+    #   register: wireguard_public_key
+    # - name: Write wireguard config
+    #   copy:
+    #     content: |
+    #       [Interface]
+    #       PrivateKey = {{ wireguard_private_key.stdout }}
+    #       Address = 192.168.2.1/24
+    #       ListenPort = {{ wireguard_port }}
+    #       SaveConfig = true
+    #       PostUp = ufw route allow in on wg0 out on {{ default_interface }}
+    #       PostUp = iptables -t nat -I POSTROUTING -o {{ default_interface }} -j MASQUERADE
+    #       PostUp = ip6tables -t nat -I POSTROUTING -o {{ default_interface }} -j MASQUERADE
+    #       PreDown = ufw route delete allow in on wg0 out on {{ default_interface }}
+    #       PreDown = iptables -t nat -D POSTROUTING -o {{ default_interface }} -j MASQUERADE
+    #       PreDown = ip6tables -t nat -D POSTROUTING -o {{ default_interface }} -j MASQUERADE
+    #     dest: /etc/wireguard/wg0.conf
+    # - name: Enable IPv4 forwarding
+    #   sysctl:
+    #     name: net.ipv4.ip_forward
+    #     value: "1"
+    #     state: present
+    #     reload: true
+    # - name: Enable IPv6 forwarding
+    #   sysctl:
+    #     name: net.ipv6.conf.all.forwarding
+    #     value: "1"
+    #     state: present
+    #     reload: true
+    #   when: ansible_all_ipv6_addresses
+
+    # leaving this commented-out for now because disabling+re-enabling
+    # wireguard is scary business especially if it's not been configured yet.
+    # - name: ufw disable
+    #   community.general.ufw:
+    #     state: disabled
+    # - name: ufw enable
+    #   community.general.ufw:
+    #     state: enabled
+    # - name: Enable wireguard
+    #   service:
+    #     name: wg-quick@wg0.service
+    #     state: started
+    #     enabled: true
+    ### TODO still needs work, need to add peer to server config
+    # - name: Check if client private key is already generated
+    #   stat:
+    #     path: /etc/wireguard/client_private.key
+    #   register: client_private_key
+    # - name: Generate wireguard client private key
+    #   shell: |
+    #     wg genkey > /etc/wireguard/client_private.key
+    #   when: client_private_key.stat.exists == False
+    # - name: Read wireguard client private key
+    #   command: cat /etc/wireguard/client_private.key
+    #   register: wireguard_client_private_key
+    # - name: Set client private key permissions
+    #   command: chmod go= /etc/wireguard/client_private.key
+    # - name: Generate client wireguard public key
+    #   shell: cat /etc/wireguard/client_private.key | wg pubkey | tee /etc/wireguard/client_public.key
+    #   register: wireguard_client_public_key
+    # - name: Write wireguard config
+    #   copy:
+    #     content: |
+    #       [Interface]
+    #       PrivateKey = {{ wireguard_client_private_key.stdout }}
+    #       Address = 192.168.2.2/24
+    #       ListenPort = {{ wireguard_port }}
+    #       SaveConfig = true
+    #     dest: /etc/wireguard/wg-client.conf
+    # ### TODO
+    # - name: Get wireguard client conf QR code
+    #   command: qrencode -t ansiutf8 /etc/wireguard/wg-client.conf
+    #   register: wireguard_client_qr
+    # - debug:
+    #     msg: |
+    #       Wireguard Client QR code:
+    #       {{ wireguard_client_qr.stdout }}

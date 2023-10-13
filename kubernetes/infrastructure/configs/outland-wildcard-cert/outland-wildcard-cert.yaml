@@ -1,0 +1,14 @@
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: outland-wildcard-cert
+  namespace: ingress-nginx
+spec:
+  dnsNames:
+    - "*.flight.kja.us"
+  issuerRef:
+    name: letsencrypt-cluster-issuer-prod
+    kind: ClusterIssuer
+  secretName: outland-wildcard-tls-secret
+---

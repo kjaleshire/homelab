@@ -20,8 +20,8 @@ done <<< "${cores}"
 hdd_temp=$(hddtemp /dev/sda -nquf)
 if [[ $hdd_temp != "0" && $hdd_temp != "" ]]; then
     # hdd_text=" | HDD: ${hdd_temp}°F"
-    high="110"
-    critical="140"
+    high="120"
+    critical="150"
     hdd_text+=" | HDD: $(print_color "${hdd_temp}°F" "${hdd_temp}" "${high}" "${critical}")"
 fi
 

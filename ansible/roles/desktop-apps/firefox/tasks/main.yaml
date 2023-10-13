@@ -1,9 +1,17 @@
 - name: Download Firefox package
+  get_url:
+    url: https://download.mozilla.org/?product=firefox-latest-ssl&os=linux64&lang=en-US
+    dest: /tmp/firefox.tar.bz2
+- name: Unbzip Firefox package
   become: true
   unarchive:
-    src: "https://download-installer.cdn.mozilla.net/pub/firefox/releases/{{ firefox_version }}/linux-x86_64/en-US/firefox-105.0.1.tar.bz2"
+    src: /tmp/firefox.tar.bz2
     dest: /opt
     remote_src: true
+- name: Remove download artifact
+  file:
+    path: /tmp/firefox.tar.bz2
+    state: absent
 - name: Create desktop entry directory
   file:
     path: "{{ user_home }}/.local/share/applications"

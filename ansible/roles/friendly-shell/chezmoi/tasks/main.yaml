@@ -1,18 +1,28 @@
-- name: Install chezmoi plugin
-  shell: |
-    {{ user_home }}/.asdf/bin/asdf plugin add chezmoi
-    status_code=$?
-    # asdf returns exit code 2 if plugin is already installed
-    if [ $status_code -eq 0 ] || [ $status_code -eq 2 ]
-      then echo "Plugin is installed"
-    fi
 - name: Install chezmoi
-  command: "{{ user_home }}/.asdf/bin/asdf install chezmoi {{ chezmoi_version }}"
-- name: Set chezmoi version globally
-  command: "{{ user_home }}/.asdf/bin/asdf global chezmoi {{ chezmoi_version }}"
-- name: Initialize chezmoi with dotfiles
-  command: "{{ user_home }}/.asdf/bin/asdf exec chezmoi init --force -a {{ dotfiles_repo }}"
-- name: Clean dotfiles repo
-  command: "{{ user_home }}/.asdf/bin/asdf exec chezmoi git reset HEAD -- --hard"
-- name: Update dotfiles repo
-  command: "{{ user_home }}/.asdf/bin/asdf exec chezmoi update"
+  tags: ["chezmoi", "friendly-shell"]
+  block:
+    - name: Configure SSH key name in config
+      copy:
+        content: |
+          Host github.com
+            IdentityFile ~/.ssh/id_ed25519.key
+            IdentitiesOnly yes
+        dest: "{{ user_home }}/.ssh/config"
+    - name: Install chezmoi plugin
+      shell: |
+        {{ user_home }}/.asdf/bin/asdf plugin add chezmoi
+        status_code=$?
+        # asdf returns exit code 2 if plugin is already installed
+        if [ $status_code -eq 0 ] || [ $status_code -eq 2 ]
+          then echo "Plugin is installed"
+        fi
+    - name: Install chezmoi
+      command: "{{ user_home }}/.asdf/bin/asdf install chezmoi latest"
+    - name: Set chezmoi version globally
+      command: "{{ user_home }}/.asdf/bin/asdf global chezmoi latest"
+    - name: Initialize chezmoi with dotfiles
+      command: "{{ user_home }}/.asdf/bin/asdf exec chezmoi init --force -a {{ dotfiles_repo }}"
+    - name: Clean dotfiles repo
+      command: "{{ user_home }}/.asdf/bin/asdf exec chezmoi git reset HEAD -- --hard"
+    - name: Update dotfiles repo
+      command: "{{ user_home }}/.asdf/bin/asdf exec chezmoi update"

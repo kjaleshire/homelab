@@ -1,8 +1,0 @@
-- name: Create snippets directory for cloud-init configs
-  file:
-    path: /var/lib/vz/snippets
-    state: directory
-    mode: 0755
-# - name: Install node-exporter & prometheus
-#   apt:
-#     pkg: [prometheus-node-exporter, prometheus]

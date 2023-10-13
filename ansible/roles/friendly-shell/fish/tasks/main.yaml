@@ -1,14 +1,16 @@
 - name: Gather the package facts
   package_facts:
     manager: auto
+  tags: friendly-shell
   when: ansible_facts.os_family != 'Darwin'
 - name: Install fish shell (Debian)
   become: true
-  when: |
-    ansible_facts.os_family == 'Debian' and ('fish' not in ansible_facts.packages or
-      ansible_facts.packages['fish'][0]['version'] | split('-') | first is version(fish_version, '<')
-    )
+  tags: friendly-shell
   block:
+    - name: Create /etc/apt/keyrings directory
+      file:
+        path: /etc/apt/keyrings
+        state: directory
     - name: Add OpenSUSE PGP public key
       shell: wget -qO - https://download.opensuse.org/repositories/shells:fish:release:3/Debian_11/Release.key | gpg --dearmor | tee /etc/apt/keyrings/shells_fish_release_3.gpg
     - name: Add OpenSUSE apt repository
@@ -26,6 +28,7 @@
         shell: /usr/bin/fish
 - name: Install fish shell (FreeBSD)
   become: true
+  tags: friendly-shell
   block:
     - name: Install fish shell (FreeBSD)
       environment:
@@ -41,6 +44,7 @@
         shell: /usr/local/bin/fish
   when: ansible_facts.os_family == 'FreeBSD'
 - name: Install fish shell (macOS)
+  tags: friendly-shell
   block:
     - name: Install fish shell (macOS)
       community.general.homebrew:

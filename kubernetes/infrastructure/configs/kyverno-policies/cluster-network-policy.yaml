@@ -1,0 +1,46 @@
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: add-networkpolicy-local-ingress
+  annotations:
+    policies.kyverno.io/title: Add Network Policy for local network & wireguard ingress
+    policies.kyverno.io/subject: NetworkPolicy
+    kyverno.io/kyverno-version: 1.10.1
+    policies.kyverno.io/minversion: 1.6.0
+    kyverno.io/kubernetes-version: "1.27"
+    policies.kyverno.io/description: >-
+      Allows pods to receive traffic from the local network and any clients connected via wireguard.
+spec:
+  generateExisting: true
+  rules:
+    - name: add-netpol-local-ingress
+      match:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+      generate:
+        apiVersion: networking.k8s.io/v1
+        kind: NetworkPolicy
+        name: allow-local-ingress
+        namespace: "{{request.object.metadata.name}}"
+        synchronize: true
+        data:
+          spec:
+            podSelector:
+              matchLabels: {}
+            policyTypes:
+              - Ingress
+            ingress:
+              - from:
+                  - ipBlock:
+                      cidr: 192.168.1.0/24
+                  # Wireguard peers
+                  - ipBlock:
+                      cidr: 10.46.0.0/24
+              - from:
+                  - podSelector: {}
+              - from:
+                  - namespaceSelector: {}
+---

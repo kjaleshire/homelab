@@ -1,18 +1,4 @@
-# Homelab Provisioning
-
-## How to provision k3s cluster
-
-Build the k3s server & worker images with packer (see README.md in the `packer` directory).
-
-Follow the instructions in `terraform/` to provision the Proxmox cluster & spin up the VM nodes.
-
-Run `refresh_kates_known_hosts.sh` in the project root. Then in `ansible/` run:
-
-```shell
-ansible-playbook kates-nodes.yaml
-```
-
-This will spin up a 3+3 master+worker cluster configuration in a few minutes with big storage attached to workers 0 and 1.
+# Homelab, VM & Localhost Provisioning
 
 ## How to provision new Kali & Debian VMs
 
@@ -30,28 +16,33 @@ Then copy the SSH key (to Kali at least; if using Debian gold master the SSH pub
 Using `ssh-copy-id` if the public key is on the filesystem:
 
 ``` shell
-ssh-copy-id -i ~/.ssh/id_ed25519 $KALI_USERNAME@$KALI_HOST
+ssh-copy-id -i ~/.ssh/id_ed25519.pub $KALI_USERNAME@$KALI_HOST
 ```
 
 Or if using 1Password as the SSH agent (public key auth temporarily disabled):
 
 ```shell
+# $KEY_NAME being the name of the key in the password manager
+# host has bash shell
 ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no $KALI_USERNAME@$KALI_HOST "mkdir -p ~/.ssh; touch ~/.ssh/authorized_keys; sed -i /$KEY_NAME\$/d ~/.ssh/authorized_keys; echo $(ssh-add -L | grep "$KEY_NAME\$") >> ~/.ssh/authorized_keys"
-```
 
-Where `$KEY_NAME` is the name of the key in 1Password.
+# host has fish shell
+ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no $KALI_USERNAME@$KALI_HOST "mkdir -p ~/.ssh; touch ~/.ssh/authorized_keys; sed -i /$KEY_NAME\\\$/d ~/.ssh/authorized_keys; echo $(ssh-add -L | grep $KEY_NAME\$) >> ~/.ssh/authorized_keys"
+```
 
 Next copy the VM-special private/public keypair so certain private repositories can be cloned:
 
 ```shell
-scp ~/Downloads/id_ed25519 $KALI_USERNAME@$KALI_HOST:/home/kali/.ssh/id_ed25519
-ssh $KALI_USERNAME@$KALI_HOST "chmod 0600 ~/.ssh/id_ed25519;echo $(ssh-add -L | grep "virtual-machine\$") > ~/.ssh/id_ed25519.pub"
+# $VM_KEY_NAME being the name of the special vm-specific keypair.
+scp ~/Downloads/id_ed25519 $KALI_USERNAME@$KALI_HOST:/home/kali/.ssh/id_ed25519.key
+ssh $KALI_USERNAME@$KALI_HOST "chmod 0600 ~/.ssh/id_ed25519.key; echo $(ssh-add -L | grep $VM_KEY_NAME\$) > ~/.ssh/id_ed25519.key.pub"
 ```
 
 Now you can run the provisioner playbooks:
 
 ``` shell
 ansible-playbook debian-vm.yaml
+# OR
 ansible-playbook kali-vm.yaml
 ```
 
@@ -79,12 +70,93 @@ ansible-playbook kali-vm.yaml
 
 1. Run `ansible-playbook freebsd-vm.yaml` to complete provisioning
 
-## How to provision a Proxmox cluster
+## How to provision a single-node k3s server
 
-Set the appropriate environment variables: `PROXMOX_USERNAME`, `PROXMOX_PASSWORD`, `PROXMOX_HOST1`.
+### (After OS Installation)
 
-Then run:
+1. Activate wi-fi if necessary.
 
-``` shell
-ansible-playbook proxmox-cluster.yaml
+1. Install sudo and add user.
+
+1. Copy the machine-specific private & public keys to the primary user's `.ssh` directory.
+
+1. Set the private key's permissions to `0400`.
+
+1. Copy the provisioner's public key to `~/.ssh/authorized_keys`.
+
+1. Create and mount external storage at `/data` as described [here](https://computingforgeeks.com/encrypt-ubuntu-debian-disk-partition-using-cryptsetup/) and [here](https://daenney.github.io/2021/01/11/systemd-encrypted-filesystems/)
+
+1. Set the environment variables `OUTLAND_{HOST,USERNAME,PASSWORD}`.
+
+1. Run `ansible-playbook outland.yaml`.
+
+1. Follow the instructions in [`kubernetes/README.md`](kubernetes/README.md) to bootstrap the cluster.
+
+### If hosting behind a router (self-signed certificates)
+
+1. Create self-signed server certificate & key for `*.flight.kja.us`, Instructions [here](https://www.flatcar.org/docs/latest/setup/security/generate-self-signed-certificates/).
+
+1. Check all the Ingresses to make sure they're using the right self-signed CA `ClusterIssuer`.
+
+1. Import the CA certificate into Firefox as a trusted certificate authority.
+
+1. Bootstrap the cluster.
+
+
+## How to provision Ubuntu in WSL
+
+### In Windows
+
+1. Install WSL with (default) Ubuntu distribution
+
+1. Install [piperelay](https://github.com/jstarks/npiperelay).
+
+1. Make sure SSH agent is enabled in 1Password in Advanced settings.
+
+### In Ubuntu on WSL
+
+1. Ensure `npiperelay.exe` is in the PATH and runnable.
+
+1. Copy the intended SSH public key to `~/.ssh/id_ed25519` (without `.pub` at the end) and into `~/.ssh/authorized_keys`.
+
+1. In order to forward the ssh-agent connection to Windows, copy this snippet into the end of `.bashrc` and source it:
+
+```shell
+# Configure ssh forwarding
+export SSH_AUTH_SOCK=$HOME/.ssh/agent.sock
+# need `ps -ww` to get non-truncated command for matching
+# use square brackets to generate a regex match for the process we want but that doesn't match the grep command running it!
+ALREADY_RUNNING=$(ps -auxww | grep -q "[n]piperelay.exe -ei -s //./pipe/openssh-ssh-agent"; echo $?)
+if [[ $ALREADY_RUNNING != "0" ]]; then
+    if [[ -S $SSH_AUTH_SOCK ]]; then
+        # not expecting the socket to exist as the forwarding command isn't running (http://www.tldp.org/LDP/abs/html/fto.html)
+        echo "removing previous socket..."
+        rm $SSH_AUTH_SOCK
+    fi
+    echo "Starting SSH-Agent relay..."
+    # setsid to force new session to keep running
+    # set socat to listen on $SSH_AUTH_SOCK and forward to npiperelay which then forwards to openssh-ssh-agent on windows
+    (setsid socat UNIX-LISTEN:$SSH_AUTH_SOCK,fork EXEC:"npiperelay.exe -ei -s //./pipe/openssh-ssh-agent",nofork &) >/dev/null 2>&1
+fi
 ```
+
+1. Run `ssh-add -l` to check that the connection is working. This should list all available keys in 1Password.
+
+1. In `~/.ssh/config`, add this snippet to force all connections use the ssh-agent connection:
+
+```shell
+Host *
+  IdentityAgent "~/.ssh/agent.sock"
+  IdentityFile ~/.ssh/id_ed25519
+  IdentitiesOnly yes
+```
+
+1. Install Python 3: `sudo apt install python3 python3-pip`
+
+1. Use pip to install Ansible: `pip3 install ansible`
+
+1. Set the `UBUNTU_USERNAME` and `UBUNTU_PASSWORD` environment variables appropriately.
+
+1. Start the SSH service: `service start ssh`
+
+1. You should now be able to run `ansible-playbook ubuntu-wsl.yaml` to finish the provisioning process.

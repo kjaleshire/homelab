@@ -1,0 +1,231 @@
+- name: Add homebrew taps
+  community.general.homebrew_tap:
+    name:
+      - 1password/tap
+      - clementtsang/bottom
+      - derailed/popeye
+      - eth-p/software
+      - flowerinthenight/tap
+      - fluxcd/tap
+      - go-task/tap
+      - harelba/q
+      - hashicorp/tap
+      - homebrew/bundle
+      - homebrew/cask-drivers
+      - homebrew/services
+      - jesseduffield/lazygit
+      - martido/graph
+      - mhanberg/tap
+      - moncho/dry
+      - snyk/tap
+      - trufflesecurity/trufflehog
+      - weaveworks/tap
+- name: Add Gitea tap
+  community.general.homebrew_tap:
+    name: gitea/tap
+    url: https://gitea.com/gitea/homebrew-gitea
+- name: Install homebrew packages
+  community.general.homebrew:
+    name:
+      - act
+      - angle-grinder
+      - libpng
+      - xz
+      - zstd
+      - ares
+      - m4
+      - autoconf
+      - automake
+      - coreutils
+      - libtool
+      - libyaml
+      - readline
+      - autogen
+      - python@3.11
+      - awslogs
+      - azure-cli
+      - bash
+      - bat
+      - bcrypt
+      - binutils
+      - bluetoothconnector
+      - blueutil
+      - borgbackup
+      - bottom
+      - gcc
+      - btop
+      - freetype
+      - glib
+      - certbot
+      - cfssl
+      - cmake
+      - ctop
+      - curl
+      - dasel
+      - diskonaut
+      - docker-completion
+      - dog
+      - duf
+      - exa
+      - fd
+      - harfbuzz
+      - ffmpeg
+      - figlet
+      - fish
+      - fswatch
+      - fzf
+      - gallery-dl
+      - git
+      - git-delta
+      - gitleaks
+      - gnu-sed
+      - gnupg
+      - gping
+      - grc
+      - helm
+      - htop
+      - hurl
+      - icdiff
+      - jc
+      - jless
+      - jq
+      - k9s
+      - kubernetes-cli
+      - kubeseal
+      - lemmeknow
+      - lsd
+      - m-cli
+      - mas
+      - miller
+      - mkcert
+      - protobuf
+      - mosh
+      - yt-dlp
+      - mpv
+      - nasm
+      - nerdfix
+      - ninja
+      - nmap
+      - osx-cpu-temp
+      - pbzip2
+      - pigz
+      - postgresql@14
+      - progress
+      - pstree
+      - pv
+      - pwgen
+      - python@3.9
+      - qemu
+      - ripgrep
+      - rsync
+      - rustscan
+      - starship
+      - stern
+      - tea
+      - tektoncd-cli
+      - telnet
+      - tflint
+      - tig
+      - tmux
+      - trash
+      - tree
+      - watchexec
+      - wget
+      - whois
+      - youtube-dl
+      - zoxide
+      - derailed/popeye/popeye
+      - eth-p/software/bat-extras
+      - flowerinthenight/tap/kubepfm
+      - fluxcd/tap/flux
+      - go-task/tap/go-task
+      - harelba/q/q
+      - hashicorp/tap/packer
+      - hashicorp/tap/terraform
+      - hashicorp/tap/vault
+      - jesseduffield/lazygit/lazygit
+      - mhanberg/tap/lazyasdf
+      - moncho/dry/dry
+      - snyk/tap/snyk
+      - trufflesecurity/trufflehog/trufflehog
+      - weaveworks/tap/gitops
+    update_homebrew: true
+- name: Install homebrew casks
+  community.general.homebrew_cask:
+    name:
+      - 1password
+      - 1password-cli
+      - alfred
+      - altserver
+      - appcleaner
+      - audacity
+      - balenaetcher
+      - bettertouchtool
+      - blender
+      - boop
+      - brave-browser
+      - command-x
+      - cutter
+      - devtoys
+      - disk-inventory-x
+      - engine-dj
+      - falcon-sql-client
+      - firefox
+      - freac
+      - ghidra
+      - iina
+      - insomnia
+      - iterm2
+      - ivpn
+      - karabiner-elements
+      - keybase
+      - kui
+      - latest
+      - little-snitch
+      - logitech-options
+      - maccy
+      - macfuse
+      - mark-text
+      - musicbrainz-picard
+      - netnewswire
+      - numi
+      - onedrive
+      - openra
+      - orbstack
+      - pock
+      - postman
+      - qlcolorcode
+      - qlvideo
+      - qtox
+      - raindropio
+      - rancher
+      - rapidapi
+      - red-canary-mac-monitor
+      - shortcat
+      - signal
+      - sloth
+      - soundsource
+      - stats
+      - sublime-text
+      - tabby
+      - telegram
+      - temurin
+      - the-unarchiver
+      - utm
+      - visual-studio-code
+      - vlc
+      - vmware-fusion
+      - warp
+      - zoom
+    update_homebrew: true
+- name: Mac App Store
+  community.general.mas:
+    id:
+      - 1569813296 # 1Password for Safari
+      - 1388020431 # DevCleaner
+      - 1136220934 # Infuse
+      - 1596283165 # rcmd
+      - 1546202212 # Space
+      - 1451685025 # WireGuard
+      - 497799835 # Xcode
+      - 562211012 # Yomu

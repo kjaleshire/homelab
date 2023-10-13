@@ -1,0 +1,71 @@
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumBGPPeeringPolicy
+# comments courtesy of JJGadgets
+# MAKE SURE CRDs ARE INSTALLED IN CLUSTER VIA cilium-config ConfigMap OR Cilium HelmRelease/values.yaml (bgpControlPlane.enabled: true), BEFORE THIS IS APPLIED!
+# "CiliumBGPPeeringPolicy" Custom Resource will replace the old MetalLB BGP's "bgp-config" ConfigMap
+# "CiliumBGPPeeringPolicy" is used with `bgpControlPlane.enabled: true` which uses GoBGP, NOT the old `bgp.enabled: true` which uses MetalLB
+metadata:
+  name: bgp-loadbalancer-ip-main
+  namespace: kube-system
+spec:
+  nodeSelector:
+    matchLabels:
+      kubernetes.io/os: "linux" # match all Linux nodes, change this to match more granularly if more than 1 PeeringPolicy is to be used throughout cluster
+  virtualRouters:
+    - localASN: &asn 65530
+      exportPodCIDR: false
+      serviceSelector: # this replaces address-pools, instead of defining the range of IPs that can be assigned to LoadBalancer services, now services have to match below selectors for their LB IPs to be announced
+        matchExpressions:
+          - key: thisFakeSelector
+            operator: NotIn
+            values: ["will-match-and-announce-all-services"]
+      neighbors:
+        - peerAddress: "10.44.1.1/32" # unlike bgp-config ConfigMap, peerAddress needs to be in CIDR notation
+          peerASN: *asn # must match peer (router) for negotiating
+          connectRetryTimeSeconds: 120
+          holdTimeSeconds: 600 # must match peer (router) for negotiating
+          keepAliveTimeSeconds: 30 # must match peer (router) for negotiating
+          gracefulRestart:
+            enabled: true
+            restartTimeSeconds: 120
+---
+apiVersion: "cilium.io/v2alpha1"
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: main-pool
+spec:
+  cidrs:
+    - cidr: 10.45.1.0/24
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: "lock-down-node"
+spec:
+  description: Allow a minimum set of required ports on nodes
+  nodeSelector:
+    matchLabels:
+      kubernetes.io/os: linux
+  ingress:
+    - fromEntities:
+        - all
+    - toPorts:
+        - ports:
+            # Kubernetes API
+            - port: "6443"
+              protocol: TCP
+            # Host SSH
+            - port: "22"
+              protocol: TCP
+            # etcd
+            - port: "2379"
+              protocol: TCP
+            # Cilium health check
+            - port: "4240"
+              protocol: TCP
+            # VXLAN which we're not using
+            # - port: "8472"
+            #   protocol: UDP
+---
+

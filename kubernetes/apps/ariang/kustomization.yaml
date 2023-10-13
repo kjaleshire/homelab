@@ -1,0 +1,11 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # create namespace first
+  - namespace.yaml
+  - ariang-flux.yaml
+  - ariang.yaml
+  # - oauth2-proxy-externalsecret.yaml
+  # - oauth2-proxy-helmrelease.yaml
+---

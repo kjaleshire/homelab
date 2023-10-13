@@ -1,0 +1,235 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jellyfin
+  namespace: mediapipe
+spec:
+  ports:
+    - name: web
+      port: 8096
+      protocol: TCP
+      targetPort: web
+  selector:
+    app: jellyfish
+  sessionAffinity: None
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jellyfin
+  namespace: mediapipe
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: &host jellyfin.flight.kja.us
+      http:
+        paths:
+          - backend:
+              service:
+                name: jellyfin
+                port:
+                  number: 8096
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - *host
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jellyfin-data-volume-claim
+  namespace: mediapipe
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 25Gi
+  storageClassName: local-storage
+  volumeName: jellyfin-data-volume
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: jellyfin-data-volume
+spec:
+  accessModes:
+    - ReadWriteOnce
+  claimRef:
+    name: jellyfin-data-volume-claim
+    namespace: mediapipe
+  hostPath:
+    path: /data/jellyfin/data
+    type: Directory
+  capacity:
+    storage: 1Gi
+  # persistentVolumeReclaimPolicy: Retain # <- default
+  storageClassName: local-storage
+  volumeMode: Filesystem
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jellyfin-udp
+  namespace: mediapipe
+spec:
+  selector:
+    app: jellyfin
+  ports:
+    - name: dlna-udp
+      port: 1900
+      protocol: UDP
+      targetPort: 1900
+    - name: discovery-udp
+      port: 7359
+      protocol: UDP
+      targetPort: 7359
+  type: LoadBalancer
+  loadBalancerIP: "10.45.1.13"
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: jellyfin
+  namespace: mediapipe
+  labels:
+    app: jellyfish
+spec:
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  selector:
+    matchLabels:
+      app: jellyfish
+  replicas: 1
+  serviceName: jellyfin
+  template:
+    metadata:
+      labels:
+        app: jellyfish
+    spec:
+      containers:
+        - env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: America/New_York
+          # Stick with this image for now until next stable release (> 10.8.10)
+          image: linuxserver/jellyfin:nightly-version-20230624.3-unstable
+          # image: docker.io/linuxserver/jellyfin:10.8.10-1-ls219 # {"$imagepolicy": "mediapipe:jellyfin-image-policy"}
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /health
+              port: web
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 10
+          name: jellyfin
+          ports:
+            - containerPort: 8096
+              name: web
+              protocol: TCP
+            - containerPort: 1900
+              name: dlna-udp
+              protocol: UDP
+            - containerPort: 7359
+              name: discovery-udp
+              protocol: UDP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /health
+              port: web
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 10
+          resources: {}
+            # limits:
+            #   cpu: "2"
+            #   gpu.intel.com/i915: "1"
+            #   memory: 8Gi
+            # requests:
+            #   cpu: 0m
+            #   gpu.intel.com/i915: "1"
+            #   memory: 0Mi
+          stdin: true
+          tty: true
+          # securityContext:
+          #   allowPrivilegeEscalation: false
+          #   capabilities:
+          #     drop:
+          #       - ALL
+          #   readOnlyRootFilesystem: true
+          volumeMounts:
+            # - mountPath: /opt/jellyfin/config
+            - mountPath: /config
+              name: jellyfin-data-volume
+              subPath: config
+            # - mountPath: /opt/jellyfin/data
+            - mountPath: /data
+              name: jellyfin-data-volume
+              subPath: data
+            - mountPath: /media/movies
+              name: host-media-volume
+              readOnly: false
+              subPath: movies
+            - mountPath: /media/shows
+              name: host-media-volume
+              readOnly: false
+              subPath: shows
+            - mountPath: /media/music
+              name: host-media-volume
+              readOnly: true
+              subPath: music
+            - mountPath: /media/downloads
+              name: host-media-volume
+              readOnly: true
+              subPath: downloads/complete
+            - mountPath: /dev/dri/renderD128
+              name: host-quicksync-render-device
+            - mountPath: /dev/dri/card0
+              name: host-quicksync-card-device
+            - mountPath: /data/transcodes
+              name: transcodes
+            - mountPath: /cache
+              name: cache
+            - mountPath: /log
+              name: log
+            - mountPath: /tmp
+              name: tmpfs
+      volumes:
+        - name: jellyfin-data-volume
+          persistentVolumeClaim:
+            claimName: jellyfin-data-volume-claim
+        - hostPath:
+            path: /data/media
+            type: Directory
+          name: host-media-volume
+        - hostPath:
+            path: /dev/dri/renderD128
+            type: CharDevice
+          name: host-quicksync-render-device
+        - hostPath:
+            path: /dev/dri/card0
+            type: CharDevice
+          name: host-quicksync-card-device
+        - emptyDir: {}
+          name: transcodes
+        - emptyDir: {}
+          name: cache
+        - emptyDir: {}
+          name: log
+        - emptyDir:
+            medium: Memory
+            sizeLimit: 10Mi
+          name: tmpfs

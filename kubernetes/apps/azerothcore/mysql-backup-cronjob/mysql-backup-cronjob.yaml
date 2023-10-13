@@ -1,0 +1,75 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mysql-backup
+  namespace: azerothcore
+spec:
+  schedule: "0 4 * * 0"
+  jobTemplate:
+    spec:
+      backoffLimit: 3
+      template:
+        spec:
+          containers:
+            - command: ["/bin/bash", "./make_backup.sh"]
+              env:
+                - name: MYSQL_ROOT_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: mysql-secret
+                      key: mysql-root-password
+                - name: REMOTE_DEST
+                  value: b2:outland-realm-mysql-backup
+              envFrom:
+                - secretRef:
+                    name: mysql-backup-secret
+              image: ghcr.io/kjaleshire/mysql-b2-backup:2023072555
+              imagePullPolicy: IfNotPresent
+              name: mysql-backup
+              resources: {}
+                # limits:
+                #   cpu: 100m
+                #   memory: 200Mi
+                # requests:
+                #   cpu: 50m
+                #   memory: 100Mi
+              volumeMounts:
+                - mountPath: /make_backup.sh
+                  name: mysql-backup-scripts-volume
+                  subPath: make_backup.sh
+                - mountPath: /etc/mysql/mysqlpassword.cnf
+                  name: mysql-backup-secret-volume
+                  subPath: mysqlpassword.cnf
+                - mountPath: /root/.config/rclone/rclone.conf
+                  name: mysql-backup-secret-volume
+                  subPath: rclone.conf
+                - mountPath: /tmp
+                  name: mysql-backup-tmp-volume
+                  readOnly: false
+          restartPolicy: Never
+          volumes:
+            - name: mysql-backup-tmp-volume
+              emptyDir:
+                sizeLimit: 500Mi
+            - name: mysql-backup-scripts-volume
+              configMap:
+                items:
+                  - key: make_backup.sh
+                    # r-xr-xr-x
+                    mode: 0555
+                    path: make_backup.sh
+                name: mysql-backup-scripts
+            - name: mysql-backup-secret-volume
+              secret:
+                items:
+                  - key: mysqlpassword.cnf
+                    # r--r--r--
+                    mode: 0444
+                    path: mysqlpassword.cnf
+                  - key: rclone.conf
+                    # r--r--r--
+                    mode: 0444
+                    path: rclone.conf
+                secretName: mysql-backup-secret
+---

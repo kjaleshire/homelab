@@ -1,25 +1,18 @@
 - name: Provision dnsmasq
+  tags:
+    - dnsmasq
+    - dns
   block:
     - name: Install dnsmasq package
       apt:
         pkg: dnsmasq
     - name: Install dnspython package
+      become: false
       pip:
         name: dnspython>2.2.0,<2.3.0
       delegate_to: localhost
-    - name: Get ingress node IPv4
-      set_fact:
-        kates_worker_ipv4: "{{ lookup('community.general.dig', groups['kates_workers'] | shuffle | first, 'qtype=A') }}"
-    - name: Get ingress node IPv6
-      set_fact:
-        kates_worker_ipv6: "{{ lookup('community.general.dig', groups['kates_workers'] | shuffle | first, 'qtype=AAAA') }}"
-    - name: Get proxmox node IPv4
-      set_fact:
-        proxmox_node_ipv4: "{{ lookup('community.general.dig', groups['proxmox_nodes'] | shuffle | first, 'qtype=A') }}"
     - debug:
-        var: kates_worker_ipv4
-    - debug:
-        var: kates_worker_ipv6
+        var: ansible_host
     - name: Copy dnsmasq config
       template:
         src: 00-dhcp-vmbr0.conf.j2

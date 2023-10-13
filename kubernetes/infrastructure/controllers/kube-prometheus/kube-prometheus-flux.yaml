@@ -1,0 +1,170 @@
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: alertmanager-image-repository
+  namespace: monitoring
+spec:
+  image: quay.io/prometheus/alertmanager
+  interval: 30m0s
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: alertmanager-image-policy
+  namespace: monitoring
+spec:
+  imageRepositoryRef:
+    name: alertmanager-image-repository
+  filterTags:
+    pattern: '^v(?P<version>0\.[0-9]{1,2}\.[0-9]{1,2})$'
+    extract: '$version'
+  policy:
+    semver:
+      range: '>= 0.0.0'
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: grafana-image-repository
+  namespace: monitoring
+spec:
+  image: docker.io/grafana/grafana
+  interval: 30m0s
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: grafana-image-policy
+  namespace: monitoring
+spec:
+  imageRepositoryRef:
+    name: grafana-image-repository
+  filterTags:
+    pattern: '^10\.[0-9]{1,2}\.[0-9]{1,2}$'
+  policy:
+    semver:
+      range: '>= 10.0.0'
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: node-exporter-image-repository
+  namespace: monitoring
+spec:
+  image: quay.io/prometheus/node-exporter
+  interval: 30m0s
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: node-exporter-image-policy
+  namespace: monitoring
+spec:
+  imageRepositoryRef:
+    name: node-exporter-image-repository
+  filterTags:
+    pattern: '^v(?P<version>1\.[0-9]{1,2}\.[0-9]{1,2})$'
+    extract: '$version'
+  policy:
+    semver:
+      range: '>= 1.0.0'
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: prometheus-operator-image-repository
+  namespace: monitoring
+spec:
+  image: quay.io/prometheus-operator/prometheus-operator
+  interval: 30m0s
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: prometheus-operator-image-policy
+  namespace: monitoring
+spec:
+  imageRepositoryRef:
+    name: prometheus-operator-image-repository
+  filterTags:
+    pattern: '^v(?P<version>0\.[0-9]{1,2}\.[0-9]{1,2})$'
+    extract: '$version'
+  policy:
+    semver:
+      range: '>= 0.0.0'
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: prometheus-config-reloader-image-repository
+  namespace: monitoring
+spec:
+  image: quay.io/prometheus-operator/prometheus-config-reloader
+  interval: 30m0s
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: prometheus-config-reloader-image-policy
+  namespace: monitoring
+spec:
+  imageRepositoryRef:
+    name: prometheus-config-reloader-image-repository
+  filterTags:
+    pattern: '^v(?P<version>0\.[0-9]{1,2}\.[0-9]{1,2})$'
+    extract: '$version'
+  policy:
+    semver:
+      range: '>= 0.0.0'
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: prometheus-image-repository
+  namespace: monitoring
+spec:
+  image: quay.io/prometheus/prometheus
+  interval: 30m0s
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: prometheus-image-policy
+  namespace: monitoring
+spec:
+  imageRepositoryRef:
+    name: prometheus-image-repository
+  filterTags:
+    pattern: '^v(?P<version>2\.[0-9]{1,2}\.[0-9]{1,2})$'
+    extract: '$version'
+  policy:
+    semver:
+      range: '>= 2.0.0'
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta1
+kind: ImageUpdateAutomation
+metadata:
+  name: kube-prometheus-image-update-automation
+  namespace: monitoring
+spec:
+  interval: 30m0s
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  git:
+    checkout:
+      ref:
+        branch: master
+    commit:
+      author:
+        email: flux@noreply.kja.us
+        name: Flux
+      messageTemplate: '{{range .Updated.Images}}{{println .}}{{end}}'
+    push:
+      branch: master
+  update:
+    path: ./kubernetes/infrastructure/controllers/kube-prometheus
+    strategy: Setters
+---

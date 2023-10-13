@@ -1,0 +1,4 @@
+- hosts: outland
+  become: true
+  roles:
+    - role: k3s-cluster/factory-reset

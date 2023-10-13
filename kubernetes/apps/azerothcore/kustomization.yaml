@@ -1,0 +1,15 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # namespace is created by azerothcore-mysql
+  - azerothcore.yaml
+  - azerothcore-externalsecret.yaml
+  - mysql-backup-cronjob
+  - notifier-cronjob
+configMapGenerator:
+  - name: azerothcore-scripts
+    namespace: azerothcore
+    files:
+      - copy_client_data.sh=copy_client_data.sh
+---

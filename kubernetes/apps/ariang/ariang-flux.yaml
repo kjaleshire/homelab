@@ -1,0 +1,50 @@
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: ariang-image-repository
+  namespace: ariang
+spec:
+  image: docker.io/hurlenko/aria2-ariang
+  interval: 30m0s
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: ariang-image-policy
+  namespace: ariang
+spec:
+  imageRepositoryRef:
+    name: ariang-image-repository
+  filterTags:
+    pattern: '^1\.[0-9]{1,2}\.[0-9]{1,2}$'
+  policy:
+    semver:
+      range: '>= 1.0.0'
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta1
+kind: ImageUpdateAutomation
+metadata:
+  name: ariang-image-update-automation
+  namespace: ariang
+spec:
+  interval: 30m0s
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  git:
+    checkout:
+      ref:
+        branch: master
+    commit:
+      author:
+        email: flux@noreply.kja.us
+        name: Flux
+      messageTemplate: '{{range .Updated.Images}}{{println .}}{{end}}'
+    push:
+      branch: master
+  update:
+    path: ./kubernetes/apps/ariang
+    strategy: Setters
+---

@@ -1,3 +1,13 @@
----
-extra_server_args: "--cluster-init"
+extra_server_args: >
+  --cluster-init
+  --default-local-storage-path=/data/k3s-local-path
+  --disable-helm-controller
+  --disable=traefik
+  --kubelet-arg=allowed-unsafe-sysctls=net.ipv6.conf.all.disable_ipv6,net.ipv4.conf.all.src_valid_mark,net.ipv4.ip_forward
+  --kubelet-arg=resolv-conf=/etc/k3s-resolv.conf
+  --disable-kube-proxy
+  --disable-network-policy
+  --flannel-backend=none
+  --disable=servicelb
+#  --node-label=intel.feature.node.kubernetes.io/gpu=true
 k3s_server_location: /var/lib/rancher/k3s

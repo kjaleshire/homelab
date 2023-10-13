@@ -1,6 +1,6 @@
 - name: Reload sshd
   become: true
-  systemd:
+  service:
     name: ssh
     state: reloaded
   when: ansible_facts.os_family == 'Debian'

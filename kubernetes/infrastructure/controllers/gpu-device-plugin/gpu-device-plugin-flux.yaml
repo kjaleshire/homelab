@@ -1,0 +1,50 @@
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: intel-gpu-plugin-image-repository
+  namespace: device-plugins
+spec:
+  image: docker.io/intel/intel-gpu-plugin
+  interval: 30m0s
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: intel-gpu-plugin-image-policy
+  namespace: device-plugins
+spec:
+  imageRepositoryRef:
+    name: intel-gpu-plugin-image-repository
+  filterTags:
+    pattern: '^0\.[0-9]{1,2}\.[0-9]{1,2}$'
+  policy:
+    semver:
+      range: '>= 0.0.0'
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta1
+kind: ImageUpdateAutomation
+metadata:
+  name: intel-gpu-plugin-image-update-automation
+  namespace: device-plugins
+spec:
+  interval: 30m0s
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  git:
+    checkout:
+      ref:
+        branch: master
+    commit:
+      author:
+        email: flux@noreply.kja.us
+        name: Flux
+      messageTemplate: '{{range .Updated.Images}}{{println .}}{{end}}'
+    push:
+      branch: master
+  update:
+    path: ./kubernetes/infrastructure/controllers/gpu-device-plugin
+    strategy: Setters
+---

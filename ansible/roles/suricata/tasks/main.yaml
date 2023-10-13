@@ -1,0 +1,37 @@
+- name: Install suricata
+  become: true
+  tags: suricata
+  block:
+    - name: Add suricata repository source
+      apt_repository:
+        repo: deb http://http.debian.net/debian buster-backports main
+        filename: backports.list
+        state: present
+    - name: Install suricata dependencies
+      apt:
+        pkg:
+          - libcap-ng-dev
+          - libcap-ng0
+          - libevent-dev
+          - libgeoip-dev
+          - libhiredis-dev
+          - liblua5.1-dev
+          - libmagic-dev
+          - libnet1-dev
+          - libnetfilter-queue-dev
+          - libnetfilter-queue1
+          - libnetfilter-log-dev
+          - libnetfilter-log1
+          - libnfnetlink-dev
+          - libnfnetlink0
+          - libpcap-dev
+          - libpcre2-dev
+          - libyaml-0-2
+          - pkg-config
+          - zlib1g
+        update_cache: true
+    - name: Install suricata package
+      apt:
+        default_release: buster-backports
+        pkg:
+          - suricata

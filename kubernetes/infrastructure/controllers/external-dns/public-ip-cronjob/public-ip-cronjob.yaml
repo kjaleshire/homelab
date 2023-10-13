@@ -1,0 +1,96 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: public-ip-cronjob
+  namespace: external-dns
+spec:
+  schedule: "*/30 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - command: ["/bin/sh", "/fetch_public_ip.sh"]
+              env:
+                - name: DOMAIN_NAME
+                  value: flight.kja.us
+                - name: ROUTER_API_IP
+                  value: "10.44.1.1"
+                - name: ROUTER_API_PORT
+                  value: "4443"
+              envFrom:
+                - secretRef:
+                    name: public-ip-secret
+              image: docker.io/badouralix/curl-jq
+              name: public-ip-fetcher
+              resources:
+                {}
+                # limits:
+                #   cpu: 100m
+                #   memory: 200Mi
+                # requests:
+                #   cpu: 50m
+                #   memory: 100Mi
+              volumeMounts:
+                - mountPath: /fetch_public_ip.sh
+                  name: public-ip-scripts-volume
+                  subPath: fetch_public_ip.sh
+          restartPolicy: Never
+          serviceAccountName: public-ip-service-account
+          volumes:
+            - name: public-ip-scripts-volume
+              configMap:
+                items:
+                  - key: fetch_public_ip.sh
+                    # r-xr-xr-x
+                    mode: 0555
+                    path: fetch_public_ip.sh
+                name: public-ip-scripts
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: public-ip-service-account
+  namespace: external-dns
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: public-ip-service-account
+  namespace: external-dns
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: dns-endpoint-writer
+subjects:
+  - kind: ServiceAccount
+    name: public-ip-service-account
+    namespace: external-dns
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: dns-endpoint-writer
+  namespace: external-dns
+rules:
+  - apiGroups:
+      - externaldns.k8s.io
+    resources:
+      - dnsendpoints
+    verbs:
+      - get
+      - list
+      - create
+      - patch
+      - update
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - get
+      - list
+      - create
+      - patch
+      - update

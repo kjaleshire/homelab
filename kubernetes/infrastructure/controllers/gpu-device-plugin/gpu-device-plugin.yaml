@@ -1,0 +1,29 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: gpu-device-plugin
+  namespace: device-plugins
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: intel-device-plugins-gpu
+      sourceRef:
+        kind: HelmRepository
+        name: intel
+        namespace: flux-system
+      interval: 30m
+  values:
+    image:
+      tag: "0.27.1"  # {"$imagepolicy": "device-plugins:intel-gpu-plugin-image-policy:tag"}
+    # How many pods will use this device
+    sharedDevNum: 1
+    # This needs to be set on the node itself
+    # securityContext:
+    #   sysctls:
+    #     - name: fs.inotify.max_user_instances
+    #       value: "1280"
+    #     - name: fs.inotify.max_user_watches
+    #       value: "655360"
+---

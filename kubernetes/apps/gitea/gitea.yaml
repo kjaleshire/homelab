@@ -1,0 +1,161 @@
+
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: gitea
+  namespace: gitea
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: gitea # helm path
+      sourceRef:
+        kind: HelmRepository
+        name: gitea
+        namespace: flux-system
+      interval: 30m
+  values:
+    image:
+      # https://docs.gitea.com/installation/install-with-docker-rootless
+      # "The rootless image uses Gitea internal SSH to provide Git protocol and doesn't support OpenSSH."
+      rootless: false
+      # tag: "1.19.4"
+      tag: "1.20.1" # {"$imagepolicy": "git:gitea-image-policy:tag"}
+    gitea:
+      admin:
+        existingSecret: gitea-secret
+      additionalConfigFromEnvs:
+        - name: GITEA__ACTIONS__ENABLED
+          value: "true"
+        - name: GITEA__CACHE__ADAPTER
+          value: memory
+        - name: GITEA__CACHE__HOST
+          value: ""
+        - name: GITEA__DATABASE__DB_TYPE
+          value: postgres
+        - name: GITEA__DATABASE__HOST
+          value: postgresql:5432
+        - name: GITEA__DATABASE__NAME
+          value: gitea
+        - name: GITEA__DATABASE__PASSWD
+          valueFrom:
+            secretKeyRef:
+              name: postgresql-secret
+              key: password
+        - name: GITEA__DATABASE__SSL_MODE
+          value: skip-verify
+        - name: GITEA__DATABASE__USER
+          value: gitea
+        - name: GITEA__DEFAULT__APP_NAME
+          value: Gitea
+        - name: GITEA__DEFAULT__RUN_MODE
+          value: prod
+        - name: GITEA__METRICS__ENABLED
+          value: "true"
+        - name: GITEA__QUEUE__CONN_STR
+          value: ""
+        - name: GITEA__QUEUE__TYPE
+          value: level
+        - name: GITEA__SECURITY__SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: gitea-secret
+              key: secret-key
+        # if we were using a 3rd-party Oauth2 provider we'd want Gitea to make
+        # accounts for us automatically on sign-in.
+        # - name: GITEA__SERVICE__ALLOW_ONLY_EXTERNAL_REGISTRATION
+        #   value: "true"
+        # - name: GITEA__OAUTH2_CLIENT__ENABLE_AUTO_REGISTRATION
+        #   value: "true"
+        - name: GITEA__SERVER__ROOT_URL
+          value: https://gitea.flight.kja.us/
+        - name: GITEA__SERVER__SSH_DOMAIN
+          value: gitea.flight.kja.us
+        # - name: GITEA__SERVER__SSH_LISTEN_PORT
+        #   value: "22"
+        # controls the port displayed in the clone card
+        - name: GITEA__SERVER__SSH_PORT
+          value: &sshport "8304"
+        - name: GITEA__SERVER__START_SSH_SERVER
+          value: "false"
+        - name: GITEA__SERVICE__DEFAULT_USER_VISIBILITY
+          value: limited
+        - name: GITEA__SERVICE__DISABLE_REGISTRATION
+          value: "true"
+        - name: GITEA__SESSION__PROVIDER
+          value: memory
+        - name: GITEA__WEBHOOK__ALLOWED_HOST_LIST
+          # comma-separated webhook domains
+          value: '*.flight.kja.us'
+    resources:
+      limits:
+        cpu: "3"
+        memory: 1Gi
+      requests:
+        cpu: 250m
+        memory: 1Gi
+    ingress:
+      className: nginx
+      enabled: true
+      annotations:
+        # gitea receives large git pushes
+        nginx.ingress.kubernetes.io/proxy-body-size: 100m
+      hosts:
+        - host: &host gitea.flight.kja.us
+          paths:
+            - path: /
+              pathType: Prefix
+      tls:
+        - hosts:
+            - *host
+    persistence:
+      claimName: gitea-volume-claim
+      create: false
+    postgresql:
+      enabled: false
+    postgresql-ha:
+      enabled: false
+    redis-cluster:
+      enabled: false
+    service:
+      ssh:
+        type: LoadBalancer
+        port: *sshport
+        externalTrafficPolicy: Local
+        loadBalancerIP: "10.45.1.11"
+    strategy:
+      type: Recreate
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gitea-volume-claim
+  namespace: gitea
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: local-storage
+  volumeName: gitea-data-volume
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: gitea-data-volume
+spec:
+  accessModes:
+    - ReadWriteOnce
+  claimRef:
+    name: gitea-volume-claim
+    namespace: gitea
+  hostPath:
+    path: /data/gitea/data
+    type: Directory
+  capacity:
+    storage: 100Gi
+  # persistentVolumeReclaimPolicy: Retain # <- default
+  storageClassName: local-storage
+  volumeMode: Filesystem
+---

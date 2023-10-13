@@ -1,0 +1,31 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: cert-manager
+  namespace: cert-manager
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: cert-manager
+      sourceRef:
+        kind: HelmRepository
+        name: jetstack
+        namespace: flux-system
+      interval: 30m
+  values:
+    # AT&T's crappy router DNS returns a SOA record for nonconforming records like _acme-challenge.gitea.flight.kja.us.
+    # So, specify non-stupid ones.
+    dns01-recursive-nameservers: 8.8.8.8:53,1.1.1.1:53
+    dns01-recursive-nameservers-only: true
+    installCRDs: true
+    global:
+      # Set the verbosity of cert-manager. Range of 0 - 6 with 6 being the most verbose.
+      # default 2
+      logLevel: 2
+    # prometheus:
+    #   enabled: true
+    #   servicemonitor:
+    #     enabled: true
+---

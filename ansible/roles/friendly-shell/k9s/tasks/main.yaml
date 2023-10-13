@@ -1,0 +1,18 @@
+- name: Install k9s
+  tags: ["k9s", "friendly-shell"]
+  become: true
+  block:
+    - name: Download k9s
+      get_url:
+        url: https://github.com/derailed/k9s/releases/latest/download/k9s_Linux_amd64.tar.gz
+        checksum: sha256:https://github.com/derailed/k9s/releases/latest/download/checksums.txt
+        dest: /tmp/k9s_Linux_amd64.tar.gz
+    - name: Decompress k9s binary into /usr/local/bin
+      unarchive:
+        src: /tmp/k9s_Linux_amd64.tar.gz
+        dest: /usr/local/bin
+        remote_src: true
+    - name: Clean up downloaded artifacts
+      file:
+        path: /tmp/k9s_Linux_amd64.tar.gz
+        state: absent

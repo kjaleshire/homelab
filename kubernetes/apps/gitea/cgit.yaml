@@ -1,0 +1,273 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/limit-rpm: "100"
+  name: cgit
+  namespace: gitea
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: &host cgit.flight.kja.us
+      http:
+        paths:
+          - backend:
+              service:
+                name: cgit
+                port:
+                  number: 3000
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - *host
+---
+kind: Service
+apiVersion: v1
+metadata:
+  labels:
+    app: cgit
+  name: cgit
+  namespace: gitea
+spec:
+  ports:
+    - port: 3000
+      targetPort: 80
+  selector:
+    app: cgit
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cgit-configmap
+  namespace: gitea
+data:
+  config_cgitrc: |
+    # Show owner on index page
+    enable-index-owner=1
+
+    # Allow http transport git clone
+    enable-http-clone=0
+
+    # Show extra links for each repository on the index page
+    enable-index-links=1
+
+    # Enable blame page and create links to it from tree page
+    enable-blame=1
+
+    # Enable ASCII art commit history graph on the log pages
+    enable-commit-graph=1
+
+    # Show number of affected files per commit on the log pages
+    enable-log-filecount=1
+
+    # Show number of added/removed lines per commit on the log pages
+    enable-log-linecount=1
+
+    # Sort branches by date
+    branch-sort=age
+
+    # Enable caching of up to 1000 output entries
+    cache-size=0
+
+    # Allow download of tar.xz and zip-files
+    snapshots=tar.xz zip
+
+    # Enable statistics per week, month and quarter
+    max-stats=quarter
+
+    # Set the title and heading of the repository index page
+    root-title=Git repository browser
+
+    # Set a subheading for the repository index page
+    root-desc=a fast webinterface for the git dscm
+
+    # Add a cgit favicon
+    favicon=/favicon.ico
+
+    # Use a custom logo
+    logo=/cgit.png
+
+    # Specify the css url
+    css=/cgit.css
+
+    # if you do not want that webcrawler (like google) index your site
+    robots=noindex, nofollow
+
+    # if cgit messes up links, use a virtual-root.4
+    virtual-root=/
+
+    # if any repositories are found with a suffix of ".git", this suffix will be removed for the url and name.
+    remove-suffix=1
+
+    # Highlight source code with python pygments-based highlighter
+    source-filter=/usr/lib/cgit/filters/syntax-highlighting.py
+
+    # Format markdown, restructuredtext, manpages, text files, and html files
+    # through the right converters
+    about-filter=/usr/lib/cgit/filters/about-formatting.sh
+
+    # gravatar email filter
+    email-filter=/usr/lib/cgit/filters/email-gravatar.py
+
+    mimetype.gif=image/gif
+    mimetype.html=text/html
+    mimetype.jpg=image/jpeg
+    mimetype.jpeg=image/jpeg
+    mimetype.pdf=application/pdf
+    mimetype.png=image/png
+    mimetype.svg=image/svg+xml
+
+    readme=:README.md
+    readme=:readme.md
+    readme=:README.mkd
+    readme=:readme.mkd
+    readme=:README.rst
+    readme=:readme.rst
+    readme=:README.html
+    readme=:readme.html
+    readme=:README.htm
+    readme=:readme.htm
+    readme=:README.txt
+    readme=:readme.txt
+    readme=:README
+    readme=:readme
+    readme=:INSTALL.md
+    readme=:install.md
+    readme=:INSTALL.mkd
+    readme=:install.mkd
+    readme=:INSTALL.rst
+    readme=:install.rst
+    readme=:INSTALL.html
+    readme=:install.html
+    readme=:INSTALL.htm
+    readme=:install.htm
+    readme=:INSTALL.txt
+    readme=:install.txt
+    readme=:INSTALL
+    readme=:install
+
+    # project-list=kjaleshire/provisioning.git
+    scan-path=/data/git/gitea-repositories/kjaleshire
+
+  config_nginx: |
+    user yaapc;
+    worker_processes 4;
+    pid /var/run/nginx.pid;
+    include /etc/nginx/modules/*.conf;
+
+    events {
+      worker_connections 1024;
+    }
+
+    http {
+      sendfile on;
+      tcp_nopush on;
+      tcp_nodelay on;
+      keepalive_timeout 65;
+      types_hash_max_size 2048;
+      server_tokens off;
+
+      client_max_body_size 10m;
+
+      include /etc/nginx/mime.types;
+      default_type application/octet-stream;
+
+      access_log /config/log/nginx/access.log;
+      error_log /config/log/nginx/error.log;
+
+      server {
+        listen                80;
+        server_name           _;
+        root                  /app;
+        try_files             $uri @cgit;
+
+        location @cgit {
+          fastcgi_pass        unix:/var/run/fcgiwrap.sock;
+          include             /etc/nginx/fastcgi_params;
+          fastcgi_param       SCRIPT_FILENAME $document_root/cgit.cgi;
+          fastcgi_param       PATH_INFO       $uri;
+          fastcgi_param       QUERY_STRING    $args;
+          fastcgi_param       HTTP_HOST       $server_name;
+        }
+
+        location ~ /.+/(info/refs|git-upload-pack) {
+          fastcgi_pass        unix:/run/fcgiwrap.sock;
+          include             /etc/nginx/fastcgi_params;
+          fastcgi_param       SCRIPT_FILENAME  /usr/libexec/git-core/git-http-backend;
+          fastcgi_param       PATH_INFO        $uri;
+          fastcgi_param       GIT_PROJECT_ROOT /data/git/repositories/kjaleshire;
+        }
+      }
+    }
+
+    daemon off;
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cgit
+  namespace: gitea
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cgit
+  template:
+    metadata:
+      labels:
+        app: cgit
+    spec:
+      containers:
+        - name: cgit
+          image: chruth/alpine-cgit:d008059
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: America/New_York
+          ports:
+            - containerPort: 80
+              name: http
+          livenessProbe:
+            tcpSocket:
+              port: 80
+            initialDelaySeconds: 10
+            timeoutSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+            limits:
+              cpu: 100m
+              memory: 100Mi
+          volumeMounts:
+            - name: git-data-volume
+              mountPath: /data
+              readOnly: true
+            - name: cgit-config-volume
+              mountPath: /files/cgitrc
+              subPath: cgitrc
+              readOnly: false
+            - name: cgit-config-volume
+              mountPath: /files/nginx.conf
+              subPath: nginx_conf
+              readOnly: false
+      volumes:
+        - name: git-data-volume
+          persistentVolumeClaim:
+            claimName: git-pvc
+        - name: cgit-config-volume
+          configMap:
+            items:
+              - key: config_cgitrc
+                path: cgitrc
+                mode: 0644
+              - key: config_nginx
+                path: nginx_conf
+                mode: 0644
+            name: cgit-configmap
+---

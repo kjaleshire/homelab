@@ -1,0 +1,51 @@
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: adguard-image-repository
+  namespace: adguardhome
+spec:
+  image: docker.io/adguard/adguardhome
+  interval: 30m0s
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: adguardhome-image-policy
+  namespace: adguardhome
+spec:
+  imageRepositoryRef:
+    name: adguard-image-repository
+  filterTags:
+    pattern: '^v(?P<version>0\.[0-9]{1,3}\.[0-9]{1,3})$'
+    extract: '$version'
+  policy:
+    semver:
+      range: '>= 0.0.0'
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta1
+kind: ImageUpdateAutomation
+metadata:
+  name: adguardhome-image-update-automation
+  namespace: adguardhome
+spec:
+  interval: 30m0s
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  git:
+    checkout:
+      ref:
+        branch: master
+    commit:
+      author:
+        email: flux@noreply.kja.us
+        name: Flux
+      messageTemplate: '{{range .Updated.Images}}{{println .}}{{end}}'
+    push:
+      branch: master
+  update:
+    path: ./kubernetes/apps/adguardhome
+    strategy: Setters
+---

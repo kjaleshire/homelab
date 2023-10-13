@@ -1,0 +1,93 @@
+---
+bgp:
+  # this enables the MetalLB implementation, which we're not using.
+  # we're using the native BGP implementation, enabled by bgpControlPlane.
+  # other settings in this section still apply
+  enabled: false
+  announce:
+    loadbalancerIP: true
+    podCIDR: false
+
+bgpControlPlane:
+  enabled: true
+
+k8sServiceHost: "10.44.1.254"
+k8sServicePort: "6443"
+
+rollOutCiliumPods: true
+localRedirectPolicy: true
+
+kubeProxyReplacement: true
+kubeProxyReplacementHealthzBindAddr: 0.0.0.0:10256
+
+loadBalancer:
+  algorithm: maglev
+  mode: dsr
+
+bandwidthManager:
+  enabled: true
+  bbr: true
+
+bpf:
+  hostLegacyRouting: false
+  masquerade: true
+  tproxy: true
+
+l7Proxy: true
+
+enableCnpStatusUpdates: true
+endpointStatus:
+  enabled: true
+  status: policy
+
+ipam:
+  mode: kubernetes
+  operator:
+    clusterPoolIPv4PodCIDRList: &podCIDR 10.42.0.0/16
+
+ingressController:
+  enabled: false
+  loadbalancerMode: shared
+
+hostFirewall:
+  enabled: true
+policyEnforcementMode: always
+policyAuditMode: true
+# extraConfig:
+#   allow-localhost: policy
+
+egressGateway:
+  enabled: true
+
+operator:
+  replicas: 1
+  rollOutPods: true
+
+autoDirectNodeRoutes: true
+ipv4NativeRoutingCIDR: *podCIDR
+tunnel: disabled
+
+hubble:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+
+  metrics:
+    enabled:
+      - dns:query;ignoreAAAA
+      - drop
+      - tcp
+      - flow
+      - port-distribution
+      - icmp
+      - http
+
+  relay:
+    enabled: true
+    rollOutPods: true
+
+  ui:
+    enabled: true
+    ingress:
+      enabled: true
+    rollOutPods: true

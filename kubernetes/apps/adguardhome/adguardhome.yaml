@@ -1,0 +1,126 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: adguardhome-dns
+  namespace: adguardhome
+spec:
+  selector:
+    app: adguardhome
+  ports:
+    - protocol: TCP
+      port: 853
+      targetPort: 853
+      name: dns-over-tls
+    - protocol: UDP
+      port: 853
+      targetPort: 53
+      name: dns
+  type: LoadBalancer
+  loadBalancerIP: "10.45.1.10"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: adguardhome
+  namespace: adguardhome
+spec:
+  selector:
+    app: adguardhome
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
+      name: http-initial
+    - protocol: TCP
+      port: 8443
+      targetPort: 8443
+      name: https
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: adguardhome
+  namespace: adguardhome
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: &host adguardhome.flight.kja.us
+      http:
+        paths:
+          - backend:
+              service:
+                name: adguardhome
+                port:
+                  number: 3000
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - *host
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: adguardhome-volume-claim
+  namespace: adguardhome
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: adguardhome
+  namespace: adguardhome
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: adguardhome
+  template:
+    metadata:
+      labels:
+        app: adguardhome
+    spec:
+      containers:
+        - name: adguardhome
+          image: docker.io/adguard/adguardhome:v0.107.39 # {"$imagepolicy": "adguardhome:adguardhome-image-policy"}
+          env:
+            - name: AGH_CONFIG
+              valueFrom:
+                configMapKeyRef:
+                  name: adguardhome-config
+                  key: adguardhome-config.yaml
+          ports:
+            - containerPort: 53
+              name: dns
+              protocol: UDP
+            - containerPort: 853
+              name: dns-over-tls
+            - containerPort: 3000
+              name: http-initial
+            - containerPort: 8443
+              name: https
+          resources: {}
+          # limits:
+          #   cpu: 100m
+          #   memory: 100Mi
+          # requests:
+          #   cpu: 100m
+          #   memory: 100Mi
+          volumeMounts:
+            - name: adguard-homedata
+              mountPath: /opt/adguardhome/work
+            - name: outland-wildcard-tls-secret-volume
+              readOnly: true
+              mountPath: /data/certs/
+      volumes:
+        - name: adguard-homedata
+          persistentVolumeClaim:
+            claimName: adguardhome-volume-claim
+        - name: outland-wildcard-tls-secret-volume
+          secret:
+            secretName: outland-wildcard-tls-secret

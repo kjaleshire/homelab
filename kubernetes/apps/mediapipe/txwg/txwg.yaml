@@ -1,0 +1,206 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: txwg
+  name: txwg
+  namespace: mediapipe
+spec:
+  ports:
+    - port: 9091
+      targetPort: http
+  selector:
+    app: txwg
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  # nginx.ingress.kubernetes.io/auth-url: "https://$host/oauth2/auth"
+  # nginx.ingress.kubernetes.io/auth-signin: "https://$host/oauth2/start?rd=$escaped_request_uri"
+  name: txwg
+  namespace: mediapipe
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: &host txwg.flight.kja.us
+      http:
+        paths:
+          - backend:
+              service:
+                name: txwg
+                port:
+                  number: 9091
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - *host
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: txwg-config-volume-claim
+  namespace: mediapipe
+  labels:
+    app: txwg
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: txwg
+  namespace: mediapipe
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: txwg
+  serviceName: txwg
+  template:
+    metadata:
+      labels:
+        app: txwg
+    spec:
+      initContainers:
+        - image: busybox
+          name: flood-for-transmission-init
+          command: ["/bin/sh", "/flood_for_transmission_init.sh"]
+          volumeMounts:
+            - mountPath: /config
+              name: txwg-config-volume
+              subPath: config
+            - mountPath: /flood_for_transmission_init.sh
+              name: transmission-config-volume
+              subPath: flood_for_transmission_init.sh
+              readOnly: true
+      containers:
+        - env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: America/New_York
+          # https://github.com/linuxserver/docker-wireguard/issues/290
+          image: docker.io/linuxserver/wireguard:v1.0.20210914-ls126 # {"$imagepolicy": "mediapipe:wireguard-image-policy"}
+          # image: docker.io/linuxserver/wireguard:v1.0.20210914-ls123
+          livenessProbe:
+            initialDelaySeconds: 10
+            # httpGet:
+            #   path: /
+            #   port: 9091
+            tcpSocket:
+              port: 9091
+          # readinessProbe:
+          #   initialDelaySeconds: 10
+          #   httpGet:
+          #     path: /
+          #     port: 9091
+          name: wireguard
+          ports:
+            - containerPort: 9091
+              name: http
+          resources: {}
+          # limits:
+          #   cpu: 100m
+          #   memory: 100M
+          # requests:
+          #   cpu: 100m
+          #   memory: 100M
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+                - SYS_MODULE
+          volumeMounts:
+            - mountPath: /config/wg0.conf
+              name: wireguard-config-volume
+              subPath: wg0.conf
+              readOnly: false
+            - mountPath: /lib/modules
+              name: host-lib-modules-volume
+              readOnly: true
+        - env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: America/New_York
+            # - name: PEERPORT
+            #   value: "44306"
+            - name: TRANSMISSION_WEB_HOME
+              value: /config/flood-for-transmission
+          envFrom:
+            - secretRef:
+                name: transmission-secret
+          image: docker.io/linuxserver/transmission:4.0.4-r0-ls202 # {"$imagepolicy": "mediapipe:txwg-transmission-image-policy"}
+          name: transmission
+          resources: {}
+          # limits:
+          #   cpu: 500m
+          #   memory: 3Gi
+          # requests:
+          #   cpu: 500m
+          #   memory: 3Gi
+          volumeMounts:
+            - mountPath: /config
+              name: txwg-config-volume
+              subPath: config
+            - mountPath: /downloads
+              name: host-media-volume
+              subPath: downloads
+            - mountPath: /watch
+              name: host-media-volume
+              subPath: watch
+            - mountPath: /torrent_done.sh
+              name: transmission-config-volume
+              subPath: torrent_done.sh
+              readOnly: true
+            - mountPath: /defaults/settings.json
+              name: transmission-config-volume
+              subPath: settings.json
+              readOnly: true
+      securityContext:
+        sysctls:
+          # - name: net.ipv6.conf.all.disable_ipv6
+          #   value: "1"
+          - name: net.ipv4.conf.all.src_valid_mark
+            value: "1"
+      volumes:
+        - name: wireguard-config-volume
+          secret:
+            items:
+              - key: wireguard_config_data
+                mode: 384
+                path: wg0.conf
+            secretName: wireguard-secret
+        - name: transmission-config-volume
+          configMap:
+            items:
+              - key: default_settings.json
+                path: settings.json
+                mode: 0444
+              - key: flood_for_transmission_init.sh
+                path: flood_for_transmission_init.sh
+                mode: 0555
+              - key: torrent_done.sh
+                path: torrent_done.sh
+                mode: 0555
+            name: transmission-defaults-configmap
+        - hostPath:
+            path: /lib/modules
+            type: Directory
+          name: host-lib-modules-volume
+        - hostPath:
+            path: /data/media
+            type: Directory
+          name: host-media-volume
+        - name: txwg-config-volume
+          persistentVolumeClaim:
+            claimName: txwg-config-volume-claim

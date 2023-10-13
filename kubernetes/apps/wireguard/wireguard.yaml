@@ -1,0 +1,191 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: wireguard
+  name: wireguard
+  namespace: wireguard
+spec:
+  ports:
+    - name: wireguard
+      port: 26668
+      targetPort: wireguard
+      protocol: UDP
+  selector:
+    app: wireguard
+  type: LoadBalancer
+  loadBalancerIP: "10.45.1.15"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: wireguard
+  name: wireguard-ui
+  namespace: wireguard
+spec:
+  ports:
+    - port: 5000
+      targetPort: 5000
+  selector:
+    app: wireguard
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations: {}
+    # nginx.ingress.kubernetes.io/auth-url: "https://$host/oauth2/auth"
+    # nginx.ingress.kubernetes.io/auth-signin: "https://$host/oauth2/start?rd=$escaped_request_uri"
+  name: wireguard-ui
+  namespace: wireguard
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: &host wireguard.flight.kja.us
+      http:
+        paths:
+          - backend:
+              service:
+                name: wireguard-ui
+                port:
+                  number: 5000
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - *host
+      # secretName: outland-wildcard-tls-secret
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wireguard-volume-claim
+  namespace: wireguard
+  labels:
+    app: wireguard
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: local-storage
+  volumeName: wireguard-volume
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: wireguard-volume
+spec:
+  accessModes:
+    - ReadWriteOnce
+  claimRef:
+    name: wireguard-volume-claim
+    namespace: wireguard
+  hostPath:
+    path: /data/wireguard
+    type: Directory
+  capacity:
+    storage: 1Gi
+  # persistentVolumeReclaimPolicy: Retain # <- default
+  storageClassName: local-storage
+  volumeMode: Filesystem
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: wireguard
+  namespace: wireguard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wireguard
+  serviceName: wireguard-ui
+  template:
+    metadata:
+      labels:
+        app: wireguard
+    spec:
+      containers:
+        - env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: America/New_York
+          # https://github.com/linuxserver/docker-wireguard/issues/290
+          image: docker.io/linuxserver/wireguard:v1.0.20210914-ls126 # {"$imagepolicy": "wireguard:wireguard-image-policy"}
+          # image: docker.io/linuxserver/wireguard:v1.0.20210914-ls123
+          name: wireguard
+          ports:
+            - containerPort: 26668
+              name: wireguard
+              protocol: UDP
+          resources: {}
+          # limits:
+          #   cpu: 100m
+          #   memory: 100M
+          # requests:
+          #   cpu: 100m
+          #   memory: 100M
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+                - SYS_MODULE
+          volumeMounts:
+            - mountPath: /config
+              name: wireguard-volume
+              readOnly: false
+              subPath: wireguard
+        - env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: America/New_York
+            - name: WGUI_MANAGE_START
+              value: "true"
+            - name: WGUI_MANAGE_RESTART
+              value: "true"
+            - name: WGUI_SERVER_INTERFACE_ADDRESSES
+              value: 10.46.0.0/24
+            - name: WGUI_SERVER_LISTEN_PORT
+              value: "26668"
+            - name: WGUI_SERVER_POST_UP_SCRIPT
+              value: iptables -t nat -I POSTROUTING -o eth0 -j MASQUERADE
+            - name: WGUI_SERVER_POST_DOWN_SCRIPT
+              value: iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+          envFrom:
+            - secretRef:
+                name: wireguard-ui-secret
+          image: docker.io/ngoduykhanh/wireguard-ui:0.5.2 # {"$imagepolicy": "wireguard:wireguard-ui-image-policy"}
+          name: wireguard-ui
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+          resources: {}
+            # limits:
+            #   cpu: 500m
+            #   memory: 128Mi
+            # requests:
+            #   cpu: 100m
+            #   memory: 128Mi
+          volumeMounts:
+            - mountPath: /etc/wireguard
+              name: wireguard-volume
+              readOnly: false
+              subPath: wireguard
+            - mountPath: /app/db
+              name: wireguard-volume
+              readOnly: false
+              subPath: wireguard-ui
+      volumes:
+        - name: wireguard-volume
+          persistentVolumeClaim:
+            claimName: wireguard-volume-claim

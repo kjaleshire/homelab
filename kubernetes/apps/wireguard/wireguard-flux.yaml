@@ -1,0 +1,73 @@
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: wireguard-image-repository
+  namespace: wireguard
+spec:
+  image: docker.io/linuxserver/wireguard
+  interval: 30m
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: wireguard-image-policy
+  namespace: wireguard
+spec:
+  imageRepositoryRef:
+    name: wireguard-image-repository
+  filterTags:
+    pattern: '^v(?P<version>1\.0\.[0-9]{8})-ls(?P<lsrev>[0-9]+)$'
+    extract: '$version$lsrev'
+  policy:
+    semver:
+      range: '>= 1.0.0'
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: wireguard-ui-image-repository
+  namespace: wireguard
+spec:
+  image: docker.io/ngoduykhanh/wireguard-ui
+  interval: 30m
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: wireguard-ui-image-policy
+  namespace: wireguard
+spec:
+  imageRepositoryRef:
+    name: wireguard-ui-image-repository
+  policy:
+    semver:
+      range: ">= 0.5.0"
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta1
+kind: ImageUpdateAutomation
+metadata:
+  name: wireguard-image-update-automation
+  namespace: wireguard
+spec:
+  interval: 30m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  git:
+    checkout:
+      ref:
+        branch: master
+    commit:
+      author:
+        email: flux@noreply.kja.us
+        name: Flux
+      messageTemplate: "{{range .Updated.Images}}{{println .}}{{end}}"
+    push:
+      branch: master
+  update:
+    path: ./kubernetes/apps/wireguard
+    strategy: Setters
+---
+

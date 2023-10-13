@@ -1,0 +1,161 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: uptime-kuma
+  namespace: uptime-kuma
+spec:
+  ports:
+    - name: web
+      port: 3001
+      protocol: TCP
+      targetPort: web
+  selector:
+    app: uptime-kuma
+  sessionAffinity: None
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/server-snippets: |
+      location / {
+        proxy_cache_bypass $http_upgrade;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header X-Forwarded-Host $http_host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      }
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+  name: uptime-kuma
+  namespace: uptime-kuma
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: &host uptime.flight.kja.us
+      http:
+        paths:
+          - backend:
+              service:
+                name: uptime-kuma
+                port:
+                  number: 3001
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - *host
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: uptime-kuma-volume-claim
+  namespace: uptime-kuma
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: local-storage
+  volumeName: uptime-kuma-data-volume
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: uptime-kuma-data-volume
+spec:
+  accessModes:
+    - ReadWriteOnce
+  claimRef:
+    name: uptime-kuma-volume-claim
+    namespace: uptime-kuma
+  hostPath:
+    path: /data/uptime-kuma/data
+    type: Directory
+  capacity:
+    storage: 1Gi
+  # persistentVolumeReclaimPolicy: Retain # <- default
+  storageClassName: local-storage
+  volumeMode: Filesystem
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: uptime-kuma
+  namespace: uptime-kuma
+  labels:
+    app: uptime-kuma
+spec:
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  selector:
+    matchLabels:
+      app: uptime-kuma
+  replicas: 1
+  serviceName: uptime-kuma
+  template:
+    metadata:
+      labels:
+        app: uptime-kuma
+    spec:
+      containers:
+        - env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+          image: docker.io/louislam/uptime-kuma:1.23.3 # {"$imagepolicy": "uptime-kuma:uptime-kuma-image-policy"}
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            exec:
+              command:
+                - extra/healthcheck
+            initialDelaySeconds: 180
+            periodSeconds: 60
+            timeoutSeconds: 30
+          name: uptime-kuma
+          ports:
+            - containerPort: 3001
+              name: web
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3001
+              scheme: HTTP
+          resources: {}
+          # limits:
+          #   cpu: 200m
+          #   memory: 512Gi
+          # requests:
+          #   cpu: 100m
+          #   memory: 128Mi
+          # securityContext:
+          #   allowPrivilegeEscalation: false
+          #   capabilities:
+          #     drop:
+          #       - ALL
+          #   readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /app/data
+              name: uptime-kuma-data-volume
+            - mountPath: /tmp
+              name: tmpfs
+      # securityContext:
+      #   runAsUser: 1000
+      #   runAsGroup: 1000
+      #   fsGroup: 1000
+      volumes:
+        - name: uptime-kuma-data-volume
+          persistentVolumeClaim:
+            claimName: uptime-kuma-volume-claim
+        - emptyDir:
+            sizeLimit: 10Mi
+          name: tmpfs

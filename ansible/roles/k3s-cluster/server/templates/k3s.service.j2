@@ -2,6 +2,8 @@
 Description=Lightweight Kubernetes
 Documentation=https://k3s.io
 After=network-online.target
+Requires=data.mount
+After=data.mount
 
 [Service]
 Type=notify
@@ -19,6 +21,3 @@ TasksMax=infinity
 TimeoutStartSec=0
 Restart=always
 RestartSec=5s
-
-[Install]
-WantedBy=multi-user.target

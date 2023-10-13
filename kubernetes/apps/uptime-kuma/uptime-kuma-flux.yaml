@@ -1,0 +1,50 @@
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: uptime-kuma-image-repository
+  namespace: uptime-kuma
+spec:
+  image: docker.io/louislam/uptime-kuma
+  interval: 30m0s
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: uptime-kuma-image-policy
+  namespace: uptime-kuma
+spec:
+  imageRepositoryRef:
+    name: uptime-kuma-image-repository
+  filterTags:
+    pattern: '^1\.[0-9]{1,2}\.[0-9]{1,2}$'
+  policy:
+    semver:
+      range: '>= 1.0.0'
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta1
+kind: ImageUpdateAutomation
+metadata:
+  name: uptime-kuma-image-update-automation
+  namespace: uptime-kuma
+spec:
+  interval: 30m0s
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  git:
+    checkout:
+      ref:
+        branch: master
+    commit:
+      author:
+        email: flux@noreply.kja.us
+        name: Flux
+      messageTemplate: '{{range .Updated.Images}}{{println .}}{{end}}'
+    push:
+      branch: master
+  update:
+    path: ./kubernetes/apps/uptime-kuma
+    strategy: Setters
+---

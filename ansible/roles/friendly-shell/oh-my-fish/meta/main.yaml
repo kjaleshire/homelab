@@ -1,3 +1,0 @@
-dependencies:
-  - role: friendly-shell/fish
-  - role: github-ssh-sigs

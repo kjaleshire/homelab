@@ -1,3 +1,4 @@
 - hosts: macos
   roles:
+    - macos-base
     - friendly-shell

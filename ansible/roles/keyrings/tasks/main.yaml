@@ -1,8 +1,0 @@
-- name: Create /etc/apt/keyrings directory
-  become: true
-  file:
-    path: /etc/apt/keyrings
-    state: directory
-    owner: root
-    group: root
-    mode: 0755

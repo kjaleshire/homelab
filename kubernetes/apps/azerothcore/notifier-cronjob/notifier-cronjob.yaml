@@ -1,0 +1,73 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: notifier-data-volume-claim
+  namespace: azerothcore
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Mi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: notifier
+  namespace: azerothcore
+spec:
+  schedule: "*/5 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - command: ["ruby", "/notify_logins.rb"]
+              env:
+                - name: MYSQL_HOST
+                  value: mysql
+                - name: MYSQL_PORT
+                  value: "3306"
+                - name: MYSQL_USER
+                  value: root
+                - name: MYSQL_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: mysql-secret
+                      key: mysql-root-password
+                - name: LAST_LOGIN_DATA_FILE
+                  value: /data/login_data.json
+              envFrom:
+                - secretRef:
+                    name: notifier-secret
+              image: ghcr.io/kjaleshire/ruby-notifier:2023072669
+              name: notifier
+              resources: {}
+                # limits:
+                #   cpu: 100m
+                #   memory: 200Mi
+                # requests:
+                #   cpu: 50m
+                #   memory: 100Mi
+              volumeMounts:
+                - mountPath: /notify_logins.rb
+                  name: notifier-scripts-volume
+                  subPath: notify_logins.rb
+                - mountPath: /data
+                  name: notifier-data-volume
+                  readOnly: false
+          restartPolicy: Never
+          volumes:
+            - name: notifier-data-volume
+              persistentVolumeClaim:
+                claimName: notifier-data-volume-claim
+            - name: notifier-scripts-volume
+              configMap:
+                items:
+                  - key: notify_logins.rb
+                    # r-xr-xr-x
+                    mode: 0555
+                    path: notify_logins.rb
+                name: notifier-scripts
+---

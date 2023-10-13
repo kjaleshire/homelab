@@ -1,0 +1,201 @@
+certmanager:
+  install: false
+gitlab:
+  gitaly:
+    persistence:
+      matchLabels:
+        volumeApp: gitaly
+      storageClass: local-storage
+    resources:
+      requests:
+        cpu: 0m
+        memory: 0Mi
+    securityContext:
+      runAsUser: 1000
+      fsGroup: 1000
+  gitlab-exporter:
+    resources:
+      requests:
+        cpu: 0m
+        memory: 0Mi
+    securityContext:
+      runAsUser: 1000
+      fsGroup: 1000
+  gitlab-shell:
+    minReplicas: 1
+    maxReplicas: 1
+    service:
+      type: LoadBalancer
+      loadBalancerIP: "10.45.1.12"
+    securityContext:
+      runAsUser: 1000
+      fsGroup: 1000
+  kas:
+    ingress:
+      agentPath: /kas
+    minReplicas: 1
+    maxReplicas: 1
+    resources:
+      requests:
+        cpu: 0m
+        memory: 0Mi
+    securityContext:
+      runAsUser: 1000
+      fsGroup: 1000
+  sidekiq:
+    minReplicas: 1
+    maxReplicas: 1
+    resources:
+      requests:
+        cpu: 0m
+        memory: 0Mi
+    securityContext:
+      runAsUser: 1000
+      fsGroup: 1000
+  toolbox:
+    backups:
+      cron:
+        enabled: true
+        extraArgs: --maximum-backups 7
+        persistence:
+          enabled: true
+          useGenericEphemeralVolume: true
+          persistentVolumeClaim:
+            accessModes:
+              - ReadWriteOnce
+            # storageClassName: local-path
+            resources:
+              requests:
+                storage: 10Gi
+        # 4am every third day of the month
+        schedule: 0 4 */3 * *
+      objectStorage:
+        config:
+          secret: backup-s3-credentials
+          key: s3cfg
+    extraEnv:
+      SKIP_REPOSITORIES_PATHS: kja/azerothcore-wotlk
+    resources:
+      requests:
+        cpu: 0m
+        memory: 0Mi
+    securityContext:
+      runAsUser: 1000
+      fsGroup: 1000
+  webservice:
+    minReplicas: 1
+    maxReplicas: 1
+    resources:
+      requests:
+        cpu: 0m
+        memory: 0Mi
+    securityContext:
+      runAsUser: 1000
+      fsGroup: 1000
+gitlab-runner:
+  runners:
+    config: |
+      [[runners]]
+        environment = ["DOCKER_HOST=tcp://docker:2376", "DOCKER_TLS_CERTDIR=/certs", "DOCKER_TLS_VERIFY=1", "DOCKER_CERT_PATH=$DOCKER_TLS_CERTDIR/client"]
+        [runners.kubernetes]
+          image = "debian:bookworm"
+          privileged = true
+          [[runners.kubernetes.volumes.empty_dir]]
+            name = "docker-certs"
+            mount_path = "/certs/client"
+            medium = "Memory"
+        {{- if .Values.global.minio.enabled }}
+        [runners.cache]
+          Type = "s3"
+          Path = "gitlab-runner"
+          Shared = true
+          [runners.cache.s3]
+            ServerAddress = {{ include "gitlab-runner.cache-tpl.s3ServerAddress" . }}
+            BucketName = "runner-cache"
+            BucketLocation = "us-east-1"
+            Insecure = false
+        {{ end }}
+gitlab-zoekt:
+  install: true
+global:
+  appConfig:
+    backups:
+      bucket: outland-gitlab-backup
+      tmpBucket: outland-gitlab-backup-tmp
+  edition: ce
+  hosts:
+    domain: flight.kja.us
+    https: true
+    gitlab:
+      name: gitlab.flight.kja.us
+    # registry:
+    #   name: registry.flight.kja.us
+    minio:
+      name: ""
+    kas:
+      name: gitlab.flight.kja.us
+  ingress:
+    annotations: {}
+    class: nginx
+    configureCertmanager: false
+    enabled: true
+    path: /
+    pathType: Prefix
+    tls:
+      enabled: true
+      secretName: outland-wildcard-tls-secret
+  shell:
+    port: 4243
+minio:
+  persistence:
+    matchLabels:
+      volumeApp: minio
+    storageClass: local-storage
+  resources:
+    requests: {}
+  securityContext:
+    runAsUser: 1000
+    fsGroup: 1000
+nginx-ingress:
+  enabled: false
+postgresql:
+  install: true
+  architecture: standalone
+  monitoring:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+  primary:
+    containerSecurityContext:
+      runAsUser: 1000
+    persistence:
+      existingClaim: postgresql-volume-claim
+    podSecurityContext:
+      fsGroup: 1000
+    resources: {}
+prometheus:
+  install: false
+redis:
+  install: true
+  architecture: standalone
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+  master:
+    containerSecurityContext:
+      runAsUser: 1000
+    persistence:
+      existingClaim: redis-volume-claim
+    podSecurityContext:
+      fsGroup: 1000
+    resources: {}
+registry:
+  hpa:
+    maxReplicas: 1
+    minReplicas: 1
+  resources:
+    requests: {}
+  securityContext:
+    runAsUser: 1000
+    fsGroup: 1000

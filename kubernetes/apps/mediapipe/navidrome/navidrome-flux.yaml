@@ -1,0 +1,50 @@
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: navidrome-image-repository
+  namespace: mediapipe
+spec:
+  image: ghcr.io/navidrome/navidrome
+  interval: 30m0s
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: navidrome-image-policy
+  namespace: mediapipe
+spec:
+  imageRepositoryRef:
+    name: navidrome-image-repository
+  filterTags:
+    pattern: '^0\.[0-9]{1,2}\.[0-9]{1,2}$'
+  policy:
+    semver:
+      range: '>= 0.0.0'
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta1
+kind: ImageUpdateAutomation
+metadata:
+  name: navidrome-image-update-automation
+  namespace: mediapipe
+spec:
+  interval: 30m0s
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  git:
+    checkout:
+      ref:
+        branch: master
+    commit:
+      author:
+        email: flux@noreply.kja.us
+        name: Flux
+      messageTemplate: '{{range .Updated.Images}}{{println .}}{{end}}'
+    push:
+      branch: master
+  update:
+    path: ./kubernetes/apps/mediapipe/navidrome
+    strategy: Setters
+---

@@ -1,0 +1,74 @@
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: gitea-image-repository
+  namespace: gitea
+spec:
+  image: docker.io/gitea/gitea
+  interval: 30m0s
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: gitea-image-policy
+  namespace: gitea
+spec:
+  imageRepositoryRef:
+    name: gitea-image-repository
+  filterTags:
+    pattern: '^1\.[0-9]{1,2}\.[0-9]{1,2}$'
+  policy:
+    semver:
+      range: '>= 1.0.0'
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: act-runner-image-repository
+  namespace: gitea
+spec:
+  image: docker.io/gitea/act_runner
+  interval: 30m0s
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: act-runner-image-policy
+  namespace: gitea
+spec:
+  imageRepositoryRef:
+    name: act-runner-image-repository
+  filterTags:
+    pattern: '^(?P<version>0\.[0-9]{1,2}\.[0-9]{1,2})-dind-rootless$'
+    extract: '$version'
+  policy:
+    semver:
+      range: '>= 0.0.0'
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta1
+kind: ImageUpdateAutomation
+metadata:
+  name: git-image-update-automation
+  namespace: gitea
+spec:
+  interval: 30m0s
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  git:
+    checkout:
+      ref:
+        branch: master
+    commit:
+      author:
+        email: flux@noreply.kja.us
+        name: Flux
+      messageTemplate: '{{range .Updated.Images}}{{println .}}{{end}}'
+    push:
+      branch: master
+  update:
+    path: ./kubernetes/apps/gitea
+    strategy: Setters
+---

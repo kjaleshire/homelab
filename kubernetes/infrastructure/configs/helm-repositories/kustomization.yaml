@@ -1,0 +1,22 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - backube.yaml
+  - bitnami.yaml
+  - bjw-s.yaml
+  - cilium.yaml
+  - external-dns.yaml
+  - external-secrets.yaml
+  - gitea.yaml
+  - gitlab.yaml
+  - hashicorp.yaml
+  - ingress-nginx.yaml
+  - intel.yaml
+  - jetstack.yaml
+  - kyverno.yaml
+  - mittwald.yaml
+  - oauth2-proxy.yaml
+  - prometheus.yaml
+  - stakater.yaml
+---

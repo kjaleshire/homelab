@@ -1,0 +1,103 @@
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  labels:
+    volumeApp: minio
+  name: gitlab-minio-volume
+spec:
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/data/gitlab/minio"
+    type: "Directory"
+  capacity:
+    storage: 10Gi
+  # persistentVolumeReclaimPolicy: Retain # <- default
+  storageClassName: local-storage
+  volumeMode: Filesystem
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  labels:
+    volumeApp: gitaly
+  name: gitlab-gitaly-volume
+spec:
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/data/gitlab/gitaly"
+    type: "Directory"
+  capacity:
+    storage: 50Gi
+  # persistentVolumeReclaimPolicy: Retain # <- default
+  storageClassName: local-storage
+  volumeMode: Filesystem
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgresql-volume-claim
+  namespace: gitlab
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 8Gi
+  storageClassName: local-storage
+  volumeName: gitlab-postgresql-volume
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: gitlab-postgresql-volume
+spec:
+  accessModes:
+    - ReadWriteOnce
+  claimRef:
+    name: postgresql-volume-claim
+    namespace: gitlab
+  hostPath:
+    path: /data/gitlab/postgresql
+    type: Directory
+  capacity:
+    storage: 8Gi
+  # persistentVolumeReclaimPolicy: Retain # <- default
+  storageClassName: local-storage
+  volumeMode: Filesystem
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-volume-claim
+  namespace: gitlab
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 8Gi
+  storageClassName: local-storage
+  volumeName: gitlab-redis-volume
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: gitlab-redis-volume
+spec:
+  accessModes:
+    - ReadWriteOnce
+  claimRef:
+    name: redis-volume-claim
+    namespace: gitlab
+  hostPath:
+    path: /data/gitlab/redis
+    type: Directory
+  capacity:
+    storage: 8Gi
+  # persistentVolumeReclaimPolicy: Retain # <- default
+  storageClassName: local-storage
+  volumeMode: Filesystem
+---

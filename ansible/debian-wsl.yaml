@@ -1,7 +1,6 @@
 - hosts: debian_wsl
   roles:
-    - role: common-apt
-      tags: common-apt
+    - common-apt
     - friendly-shell
     - rust-lang
     - debian-base

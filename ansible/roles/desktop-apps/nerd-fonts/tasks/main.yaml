@@ -10,20 +10,25 @@
         state: directory
     - name: Download & unarchive nerd fonts into user fonts directory
       unarchive:
-        src: "{{ item }}"
+        src: "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/{{ item }}"
         dest: "{{ user_home }}/.local/share/fonts"
         remote_src: true
       loop:
-        - "https://github.com/ryanoasis/nerd-fonts/releases/download/v{{ nerd_font_version }}/Cousine.zip"
-        - "https://github.com/ryanoasis/nerd-fonts/releases/download/v{{ nerd_font_version }}/NerdFontsSymbolsOnly.zip"
-        - "https://github.com/ryanoasis/nerd-fonts/releases/download/v{{ nerd_font_version }}/SourceCodePro.zip"
-        - "https://github.com/ryanoasis/nerd-fonts/releases/download/v{{ nerd_font_version }}/InconsolataLGC.zip"
-        - "https://github.com/ryanoasis/nerd-fonts/releases/download/v{{ nerd_font_version }}/FiraCode.zip"
-      #   - "https://github.com/tonsky/FiraCode/releases/download/{{ fira_code_version }}/Fira_Code_v{{ fira_code_version }}.zip"
+        - Cousine.zip
+        - NerdFontsSymbolsOnly.zip
+        - SourceCodePro.zip
+        - InconsolataLGC.zip
+        - FiraCode.zip
     - name: Download DM Mono font into user fonts directory
       get_url:
         url: "https://raw.githubusercontent.com/googlefonts/dm-mono/main/exports/{{ item }}"
         dest: "{{ user_home }}/.local/share/fonts"
-      loop: [DMMono-Italic.ttf, DMMono-Light.ttf, DMMono-LightItalic.ttf, DMMono-Medium.ttf, DMMono-MediumItalic.ttf, DMMono-Regular.ttf]
+      loop:
+        - DMMono-Italic.ttf
+        - DMMono-Light.ttf
+        - DMMono-LightItalic.ttf
+        - DMMono-Medium.ttf
+        - DMMono-MediumItalic.ttf
+        - DMMono-Regular.ttf
     - name: Refresh the font cache
       command: fc-cache

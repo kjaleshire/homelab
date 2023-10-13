@@ -1,0 +1,12 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - notifier-cronjob.yaml
+  - notifier-externalsecret.yaml
+configMapGenerator:
+  - name: notifier-scripts
+    namespace: azerothcore
+    files:
+      - notify_logins.rb=notify_logins.rb
+---

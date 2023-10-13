@@ -1,0 +1,113 @@
+---
+kind: Service
+apiVersion: v1
+metadata:
+  labels:
+    app: ariang
+  name: ariang
+  namespace: ariang
+spec:
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+  selector:
+    app: ariang
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/auth-url: "https://$host/oauth2/auth"
+    nginx.ingress.kubernetes.io/auth-signin: "https://$host/oauth2/start?rd=$escaped_request_uri"
+  name: ariang
+  namespace: ariang
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: &host ariang.flight.kja.us
+      http:
+        paths:
+          - backend:
+              service:
+                name: ariang
+                port:
+                  number: 8080
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - *host
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ariang-claim
+  namespace: ariang
+  labels:
+    app: ariang
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ariang
+  namespace: ariang
+spec:
+  replicas: 1
+  serviceName: ariang
+  selector:
+    matchLabels:
+      app: ariang
+  template:
+    metadata:
+      labels:
+        app: ariang
+    spec:
+      containers:
+        - name: ariang
+          image: hurlenko/aria2-ariang:1.3.4 # {"$imagepolicy": "ariang:ariang-image-policy"}
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: America/New_York
+            - name: ARIA2RPCPORT
+              value: "443"
+          ports:
+            - containerPort: 8080
+              name: http
+          resources:
+            limits:
+              cpu: 500m
+              memory: 500M
+            # requests:
+            #   cpu: 250m
+            #   memory: 500M
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 120
+            timeoutSeconds: 10
+          volumeMounts:
+            - name: ariang-volume
+              mountPath: /aria2/conf
+              readOnly: false
+              subPath: conf
+            - name: ariang-volume
+              mountPath: /aria2/data
+              readOnly: false
+              subPath: data
+      volumes:
+        - name: ariang-volume
+          persistentVolumeClaim:
+            claimName: ariang-claim
+---
+

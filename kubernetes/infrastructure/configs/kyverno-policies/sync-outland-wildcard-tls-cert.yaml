@@ -1,0 +1,35 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: sync-outland-wildcard-tls-cert
+  annotations:
+    policies.kyverno.io/title: Sync Wildcard TLS cert
+    policies.kyverno.io/subject: Secret
+    policies.kyverno.io/minversion: 1.6.0
+    policies.kyverno.io/description: >-
+      Copy the wildcard TLS certificate secret to other namespaces that need it
+spec:
+  generateExisting: true
+  rules:
+    - name: sync-outland-wildcard-tls-cert
+      match:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+      preconditions:
+        all:
+          - key: "{{request.object.metadata.name}}"
+            operator: AnyIn
+            value:
+              - adguardhome
+              - gitlab
+      generate:
+        apiVersion: v1
+        kind: Secret
+        name: outland-wildcard-tls-secret
+        namespace: "{{request.object.metadata.name}}"
+        synchronize: true
+        clone:
+          name: outland-wildcard-tls-secret
+          namespace: ingress-nginx

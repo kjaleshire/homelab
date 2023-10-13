@@ -11,7 +11,7 @@
     - name: Install base packages
       community.general.pkgng:
         name:
-          - avahi
+          # - avahi
           - curl
           - dash
           - gtar

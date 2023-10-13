@@ -1,0 +1,15 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - txwg-externalsecret.yaml
+  - txwg-flux.yaml
+  - txwg.yaml
+configMapGenerator:
+  - name: transmission-defaults-configmap
+    namespace: mediapipe
+    files:
+      - default_settings.json=default_settings.json
+      - flood_for_transmission_init.sh=flood_for_transmission_init.sh
+      - torrent_done.sh=torrent_done.sh
+---

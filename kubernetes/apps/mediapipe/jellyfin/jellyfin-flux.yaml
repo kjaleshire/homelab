@@ -1,0 +1,60 @@
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: jellyfin-image-repository
+  namespace: mediapipe
+spec:
+  # image: docker.io/jellyfin/jellyfin
+  # image: ghcr.io/beluga-cloud/jellyfin/jellyfin
+  image: docker.io/linuxserver/jellyfin
+  interval: 30m0s
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: jellyfin-image-policy
+  namespace: mediapipe
+spec:
+  imageRepositoryRef:
+    name: jellyfin-image-repository
+  filterTags:
+    # linuxserver unstable
+    # pattern: '^nightly-version-(?P<datestamp>[0-9]{8}\.[0-9]{1,2})-unstable$'
+    # linuxserver stable
+    pattern: '^(?P<version>10\.[0-9]{1,2}\.[0-9]{1,2})-(?P<rev>[0-9]{1,2})-ls(?P<lsrev>[0-9]+)$'
+    extract: '$version$rev$lsrev'
+  # policy:
+  #   numerical:
+  #     order: asc
+  # vanilla stable, no filter needed
+  policy:
+    semver:
+      range: ~10.0
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta1
+kind: ImageUpdateAutomation
+metadata:
+  name: jellyfin-image-update-automation
+  namespace: mediapipe
+spec:
+  interval: 30m0s
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  git:
+    checkout:
+      ref:
+        branch: master
+    commit:
+      author:
+        email: flux@noreply.kja.us
+        name: Flux
+      messageTemplate: '{{range .Updated.Images}}{{println .}}{{end}}'
+    push:
+      branch: master
+  update:
+    path: ./kubernetes/apps/mediapipe/jellyfin
+    strategy: Setters
+---

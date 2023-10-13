@@ -1,26 +1,5 @@
 ---
 all:
-  children:
-    proxmox_nodes:
-      hosts:
-        arbol:
-          ansible_host: "{{ lookup('ansible.builtin.env', 'PROXMOX_HOST1') }}"
-          ansible_user: "{{ lookup('ansible.builtin.env', 'PROXMOX_USERNAME') }}"
-          user_home: "/{{ ansible_user }}"
-    kates_servers:
-      hosts:
-        kates-server-[0:2].flight.kja.us:
-          ansible_user: "{{ lookup('ansible.builtin.env', 'KATES_USERNAME') }}"
-          user_home: "/home/{{ ansible_user }}"
-    kates_workers:
-      hosts:
-        kates-worker-[0:2].flight.kja.us:
-          ansible_user: "{{ lookup('ansible.builtin.env', 'KATES_USERNAME') }}"
-          user_home: "/home/{{ ansible_user }}"
-    kates_nodes:
-      children:
-        kates_servers:
-        kates_workers:
   hosts:
     debian_vm:
       ansible_host: "{{ lookup('ansible.builtin.env', 'DEBIAN_HOST') }}"
@@ -49,3 +28,13 @@ all:
       ansible_user: "{{ lookup('ansible.builtin.env', 'MACOS_USERNAME') }}"
       ansible_become_pass: "{{ lookup('ansible.builtin.env', 'MACOS_PASSWORD') }}"
       user_home: "/Users/{{ ansible_user }}"
+    ubuntu_wsl:
+      ansible_host: localhost
+      ansible_user: "{{ lookup('ansible.builtin.env', 'UBUNTU_USERNAME') }}"
+      ansible_become_pass: "{{ lookup('ansible.builtin.env', 'UBUNTU_PASSWORD') }}"
+      user_home: "/home/{{ ansible_user }}"
+    outland:
+      ansible_host: "{{ lookup('ansible.builtin.env', 'OUTLAND_HOST') }}"
+      ansible_user: "{{ lookup('ansible.builtin.env', 'OUTLAND_USERNAME') }}"
+      ansible_become_pass: "{{ lookup('ansible.builtin.env', 'OUTLAND_PASSWORD') }}"
+      user_home: "/home/{{ ansible_user }}"

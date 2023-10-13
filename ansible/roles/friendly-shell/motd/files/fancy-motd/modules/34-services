@@ -5,9 +5,11 @@ set -euo pipefail
 # Default services, have to be declared before sourcing framework.sh so the user can override them
 declare -A services
 services["sshd"]="sshd"
-services["dnsmasq"]="dnsmasq"
-services["nginx"]="nginx"
-services["k3s-node"]="k3s"
+# services["dnsmasq"]="dnsmasq"
+# services["AdGuardHome"]="AdGuardHome"
+services["k3s"]="k3s"
+# services["fail2ban"]="fail2ban"
+services["wg-quick@wg0"]="wireguard"
 
 # shellcheck source=./framework.sh
 source "${BASE_DIR}/framework.sh"

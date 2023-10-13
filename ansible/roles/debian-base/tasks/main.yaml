@@ -3,17 +3,20 @@
   block:
     - name: Allow the debian user to run any commands as root
       community.general.sudoers:
-        name: debian-sudo
-        user: debian
+        name: user-sudo
+        user: "{{ ansible_user }}"
         nopassword: false
         runas: root
         commands: ALL
     - name: Install base packages
       apt:
         pkg:
-          - avahi-utils
+          # - avahi-utils
           - bat
           - bpftrace
           - exa
           - htop
           - ripgrep
+          - socat
+          - wireless-tools
+          - wpasupplicant

@@ -1,0 +1,88 @@
+image: ghcr.io/kjaleshire/docker-builder:2023072673
+
+stages:
+  - build
+
+.before_script: &waitfordocker
+  - echo -e "\e[0Ksection_start:`date +%s`:docker_wait_readiness[collapsed=true]\r\e[0KWaiting for docker daemon to be ready"
+  - test ${CI_DEBUG_TRUE+true} && set -x
+  - type docker >/dev/null 2>&1 || exit 0
+  - test ${DOCKER_READINESS_TIMEOUT:=30} -eq 0 && exit 0
+  - slept=0
+  - until test $slept -eq $DOCKER_READINESS_TIMEOUT || docker info >/dev/null 2>&1; do
+  - sleep 1
+  - slept=$((slept + 1))
+  - done
+  - echo -e "\e[0Ksection_end:`date +%s`:docker_wait_readiness\r\e[0K"
+
+build-acore-wotlk-all:
+  before_script: *waitfordocker
+
+  cache:
+    - key:
+        files:
+          - apps/bash_shared/deno.sh
+      paths:
+        - deps/deno
+
+  script:
+    - echo -e "\e[0Ksection_start:`date +%s`:acore_build_prod[collapsed=true]\r\e[0KBuilding Azerothcore prod images"
+    - ./acore.sh docker prod:build
+    - echo -e "\e[0Ksection_end:`date +%s`:acore_build_prod\r\e[0K"
+    - echo $GITHUB_TOKEN | docker login ghcr.io -u kjaleshire --password-stdin
+    - export DATESTAMP=$(date '+%Y%m%d')
+    - export DOCKER_TAG=${DATESTAMP}${CI_PIPELINE_ID}
+    - docker tag acore/ac-wotlk-authserver:master ghcr.io/kjaleshire/ac-wotlk-authserver:${DOCKER_TAG}
+    - docker tag acore/ac-wotlk-authserver:master ghcr.io/kjaleshire/ac-wotlk-authserver:latest
+    - docker tag acore/ac-wotlk-client-data:master ghcr.io/kjaleshire/ac-wotlk-client-data:${DOCKER_TAG}
+    - docker tag acore/ac-wotlk-client-data:master ghcr.io/kjaleshire/ac-wotlk-client-data:latest
+    - docker tag acore/ac-wotlk-worldserver:master ghcr.io/kjaleshire/ac-wotlk-worldserver:${DOCKER_TAG}
+    - docker tag acore/ac-wotlk-worldserver:master ghcr.io/kjaleshire/ac-wotlk-worldserver:latest
+    - echo -e "\e[0Ksection_start:`date +%s`:docker_push_authserver_tag[collapsed=true]\r\e[0KBuilding Azerothcore prod images"
+    - docker push ghcr.io/kjaleshire/ac-wotlk-authserver:${DOCKER_TAG}
+    - echo -e "\e[0Ksection_end:`date +%s`:docker_push_authserver_tag\r\e[0K"
+    - echo -e "\e[0Ksection_start:`date +%s`:docker_push_authserver_latest[collapsed=true]\r\e[0KBuilding Azerothcore prod images"
+    - docker push ghcr.io/kjaleshire/ac-wotlk-authserver:latest
+    - echo -e "\e[0Ksection_end:`date +%s`:docker_push_authserver_latest\r\e[0K"
+    - echo -e "\e[0Ksection_start:`date +%s`:docker_push_client_data_tag[collapsed=true]\r\e[0KBuilding Azerothcore prod images"
+    - docker push ghcr.io/kjaleshire/ac-wotlk-client-data:${DOCKER_TAG}
+    - echo -e "\e[0Ksection_end:`date +%s`:docker_push_client_data_tag\r\e[0K"
+    - echo -e "\e[0Ksection_start:`date +%s`:docker_push_client_data_latest[collapsed=true]\r\e[0KBuilding Azerothcore prod images"
+    - docker push ghcr.io/kjaleshire/ac-wotlk-client-data:latest
+    - echo -e "\e[0Ksection_end:`date +%s`:docker_push_client_data_latest\r\e[0K"
+    - echo -e "\e[0Ksection_start:`date +%s`:docker_push_worldserver_tag[collapsed=true]\r\e[0KBuilding Azerothcore prod images"
+    - docker push ghcr.io/kjaleshire/ac-wotlk-worldserver:${DOCKER_TAG}
+    - echo -e "\e[0Ksection_end:`date +%s`:docker_push_worldserver_tag\r\e[0K"
+    - echo -e "\e[0Ksection_start:`date +%s`:docker_push_worldserver_latest[collapsed=true]\r\e[0KBuilding Azerothcore prod images"
+    - docker push ghcr.io/kjaleshire/ac-wotlk-worldserver:latest
+    - echo -e "\e[0Ksection_end:`date +%s`:docker_push_worldserver_latest\r\e[0K"
+
+  services:
+    - docker:23.0.6-dind
+
+  stage: build
+  when: manual
+
+mirror-upstream-sync:
+  before_script:
+    - apt-get update -y && apt-get install git openssh-client -y
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - export GITLAB_SSH_PORT="${GITLAB_SSH_PORT:-22}"
+    - echo $GITLAB_SSH_PORT $GITLAB_HOST
+    - ssh-keyscan -p $GITLAB_SSH_PORT $GITLAB_HOST >> ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+    - git config --global user.name "${GIT_USER_NAME}"
+    - git config --global user.email "${GIT_USER_EMAIL}"
+    - ssh -p $GITLAB_SSH_PORT "git@$GITLAB_HOST"
+
+  only:
+    - schedules
+  script:
+    - git fetch
+    - git checkout master
+    - git pull "https://github.com/azerothcore/azerothcore-wotlk.git" master
+    - git push -f "ssh://git@$GITLAB_HOST:$GITLAB_SSH_PORT/kja/azerothcore-wotlk.git" master
+  stage: build

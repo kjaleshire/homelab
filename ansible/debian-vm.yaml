@@ -1,7 +1,6 @@
 - hosts: debian_vm
   roles:
-    - role: common-apt
-      tags: common-apt
+    - common-apt
     - friendly-shell
     - desktop-apps
     - rust-lang

@@ -1,0 +1,24 @@
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ClusterSecretStore
+metadata:
+  name: vault-backend
+spec:
+  provider:
+    vault:
+      server: "http://vault.vault.svc.cluster.local:8200"
+      # would prefer to use TLS like
+      # server: "https://vault.vault.svc.cluster.local:8201"
+      # but this requires:
+      # 1. a self-signed CA for .cluster.local
+      # 1.5 maybe an internal-only ingress-nginx to do wacky ingress things
+      # 2. a ClusterIssuer for that CA to make the cert for vault (or internal ingress)
+      # 3. mounting the CA cert on external-secrets pods (maybe using kyverno)
+      path: "secret"
+      version: "v2"
+      auth:
+        tokenSecretRef:
+          name: "external-secrets-secret"
+          namespace: "external-secrets"
+          key: "vault-token"
+---

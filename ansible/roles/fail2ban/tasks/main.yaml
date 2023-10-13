@@ -1,0 +1,8 @@
+- name: Install fail2ban
+  become: true
+  tags: fail2ban
+  block:
+    - name: Install fail2ban
+      apt:
+        pkg:
+          - fail2ban

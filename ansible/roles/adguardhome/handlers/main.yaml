@@ -1,0 +1,5 @@
+- name: Restart AdGuardHome
+  systemd:
+    name: AdGuardHome
+    enabled: true
+    state: restarted

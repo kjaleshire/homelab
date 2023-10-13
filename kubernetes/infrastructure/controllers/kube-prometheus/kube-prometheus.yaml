@@ -1,0 +1,94 @@
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: kube-prometheus
+  namespace: monitoring
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: kube-prometheus-stack
+      sourceRef:
+        kind: HelmRepository
+        name: prometheus
+        namespace: flux-system
+      interval: 30m
+  values:
+    alertmanager:
+      alertmanagerSpec:
+        configSecret: alertmanager-secret
+        # image:
+        #   tag: v0.26.0 # {"$imagepolicy": "monitoring:alertmanager-image-policy:tag"}
+        useExistingSecret: true
+    defaultRules:
+      disabled:
+        KubeHpaMaxedOut: true
+    grafana:
+      admin:
+        existingSecret: grafana-secret
+        userKey: admin-user
+        passwordKey: admin-password
+      env:
+        GF_SERVER_ROOT_URL: "https://%(domain)s"
+      # OAuth2 environment variables
+      # envFromSecret: grafana-env-secret
+      # image:
+      #   tag: "10.1.1" # {"$imagepolicy": "monitoring:grafana-image-policy:tag"}
+      ingress:
+        annotations: {}
+        enabled: true
+        hosts:
+          - &grafhost grafana.flight.kja.us
+        ingressClassName: nginx
+        paths:
+          - /
+        tls:
+          - hosts:
+              - *grafhost
+      persistence:
+        enabled: true
+      serviceMonitor:
+        enabled: true
+    prometheus:
+      ingress:
+        enabled: false
+        ingressClassName: nginx
+        annotations: {}
+        # nginx.ingress.kubernetes.io/auth-url: "https://$host/oauth2/auth"
+        # nginx.ingress.kubernetes.io/auth-signin: "https://$host/oauth2/start?rd=$escaped_request_uri"
+        hosts:
+          - &promhost prometheus.flight.kja.us
+        paths:
+          - /
+        tls:
+          - hosts:
+              - *promhost
+      prometheusSpec:
+        storageSpec:
+          volumeClaimTemplate:
+            spec:
+              #  storageClassName: local-path
+              accessModes: ["ReadWriteOnce"]
+              resources:
+                requests:
+                  storage: 50Gi
+    kubeControllerManager:
+      enabled: false
+    kubeProxy:
+      enabled: false
+    kubeScheduler:
+      enabled: false
+    nodeExporter:
+      # image:
+      #   tag: v1.6.1 # {"$imagepolicy": "monitoring:node-exporter-image-policy:tag"}
+      networkPolicy:
+        enabled: true
+    # prometheusOperator:
+      # image:
+      #   tag: v0.68.0 # {"$imagepolicy": "monitoring:prometheus-operator-image-policy:tag"}
+      # prometheusConfigReloader:
+        # image:
+        #   tag: v0.68.0 # {"$imagepolicy": "monitoring:prometheus-config-reloader-image-policy:tag"}
+    # prometheusSpec:
+      # image:
+      #   tag: v2.47.0 # {"$imagepolicy": "monitoring:prometheus-image-policy:tag"}

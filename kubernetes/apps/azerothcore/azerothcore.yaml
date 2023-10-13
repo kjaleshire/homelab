@@ -1,0 +1,194 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: azerothcore
+  name: azerothcore
+  namespace: azerothcore
+spec:
+  ports:
+    - name: auth
+      port: 3724
+      targetPort: auth
+    - name: world
+      port: 8085
+      targetPort: world
+  selector:
+    app: azerothcore
+  type: LoadBalancer
+  loadBalancerIP: "10.45.1.16"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: azerothcore-volume-claim
+  namespace: azerothcore
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: local-storage
+  volumeName: azerothcore-data-volume
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: azerothcore-data-volume
+spec:
+  accessModes:
+    - ReadWriteOnce
+  claimRef:
+    name: azerothcore-volume-claim
+    namespace: azerothcore
+  hostPath:
+    path: /data/azerothcore/data
+    type: Directory
+  capacity:
+    storage: 20Gi
+  # persistentVolumeReclaimPolicy: Retain # <- default
+  storageClassName: local-storage
+  volumeMode: Filesystem
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: azerothcore
+  namespace: azerothcore
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: azerothcore
+  serviceName: azerothcore
+  template:
+    metadata:
+      labels:
+        app: azerothcore
+    spec:
+      initContainers:
+        - command: ["/usr/bin/bash", "/azerothcore/copy_client_data.sh"]
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: America/New_York
+            - name: DATAPATH
+              value: /client-data-volume
+          name: ac-wotlk-client-data
+          # image: acore/ac-wotlk-client-data:7.0.0-dev.1
+          image: ghcr.io/kjaleshire/ac-wotlk-client-data:2023072674
+          resources: {}
+            # limits:
+            #   cpu: 100m
+            #   memory: 100Mi
+            # requests:
+            #   cpu: 50m
+            #   memory: 50Mi
+          volumeMounts:
+            - mountPath: /client-data-volume
+              name: azerothcore-volume
+            - mountPath: /azerothcore/copy_client_data.sh
+              name: azerothcore-scripts-volume
+              subPath: copy_client_data.sh
+      containers:
+        - env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: America/New_York
+            - name: USER_CONF_PATH
+              value: /azerothcore/apps/docker/config-docker.sh
+            - name: DATAPATH
+              value: /azerothcore/env/dist/data
+          # image: acore/ac-wotlk-worldserver:7.0.0-dev.1
+          image: ghcr.io/kjaleshire/ac-wotlk-worldserver:2023072674
+          name: ac-wotlk-worldserver
+          ports:
+            - containerPort: 8085
+              name: world
+            - containerPort: 7878
+              name: soap
+          resources: {}
+            # limits:
+            #   cpu: 1500m
+            #   memory: 8Gi
+            # requests:
+            #   cpu: 700m
+            #   memory: 4Gi
+          # securityContext:
+          #   capabilities:
+          #     add:
+          #       - SYS_NICE
+          #   privileged: true
+          # worldserver becomes shell after bootstrap.
+          stdin: true
+          tty: true
+          volumeMounts:
+            - mountPath: /azerothcore/env/dist/etc/worldserver.conf
+              name: azerothcore-config-volume
+              readOnly: true
+              subPath: worldserver.conf
+            - mountPath: /azerothcore/env/dist/data
+              name: azerothcore-volume
+              # subPath: data
+        - env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: America/New_York
+          # image: acore/ac-wotlk-authserver:7.0.0-dev.1
+          image: ghcr.io/kjaleshire/ac-wotlk-authserver:2023072674
+          name: ac-wotlk-authserver
+          ports:
+            - containerPort: 3724
+              name: auth
+          resources: {}
+            # limits:
+            #   cpu: 100m
+            #   memory: 200Mi
+            # requests:
+            #   cpu: 50m
+            #   memory: 100Mi
+          # securityContext:
+          #   capabilities:
+          #     add:
+          #       - SYS_NICE
+          #   privileged: true
+          # authserver asks for input on initialization
+          stdin: true
+          tty: true
+          volumeMounts:
+            - mountPath: /azerothcore/env/dist/etc/authserver.conf
+              name: azerothcore-config-volume
+              subPath: authserver.conf
+              readOnly: true
+      volumes:
+        - name: azerothcore-config-volume
+          secret:
+            items:
+              - key: authserver.conf
+                path: authserver.conf
+              - key: worldserver.conf
+                path: worldserver.conf
+            secretName: azerothcore-configs-secret
+        - name: azerothcore-volume
+          persistentVolumeClaim:
+            claimName: azerothcore-volume-claim
+        - name: azerothcore-scripts-volume
+          configMap:
+            items:
+              - key: copy_client_data.sh
+                # r-xr-xr-x
+                mode: 0555
+                path: copy_client_data.sh
+            name: azerothcore-scripts
+---

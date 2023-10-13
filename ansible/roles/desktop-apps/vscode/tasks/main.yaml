@@ -1,6 +1,10 @@
 - name: Install Visual Studio Code
   become: true
   block:
+    - name: Create /etc/apt/keyrings directory
+      file:
+        path: /etc/apt/keyrings
+        state: directory
     - name: Add Microsoft PGP public key
       shell: wget -qO - https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | tee /etc/apt/keyrings/packages.microsoft.gpg
     - name: Add Visual Studio Code repository

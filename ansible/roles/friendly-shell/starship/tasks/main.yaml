@@ -1,28 +1,21 @@
 - name: Install Starship (Debian)
   become: true
+  tags: friendly-shell
   block:
-    - name: Download Starship SHA
-      get_url:
-        url: "https://github.com/starship/starship/releases/download/v{{ starship_version }}/starship-x86_64-unknown-linux-gnu.tar.gz.sha256"
-        dest: /tmp/starship.tar.gz.sha256
-    - name: Save Starship SHA
-      command: cat /tmp/starship.tar.gz.sha256
-      register: starship_sha256
     - name: Download starship
       get_url:
-        url: "https://github.com/starship/starship/releases/download/v{{ starship_version }}/starship-x86_64-unknown-linux-gnu.tar.gz"
-        dest: /tmp/starship.tar.gz
-        checksum: "sha256:{{ starship_sha256.stdout }}"
+        url: https://github.com/starship/starship/releases/latest/download/starship-x86_64-unknown-linux-gnu.tar.gz
+        dest: /tmp/starship-x86_64-unknown-linux-gnu.tar.gz
+        checksum: sha256:https://github.com/starship/starship/releases/latest/download/starship-x86_64-unknown-linux-gnu.tar.gz.sha256
     - name: Decompress starship binary into /usr/local/bin
       unarchive:
-        src: /tmp/starship.tar.gz
+        src: /tmp/starship-x86_64-unknown-linux-gnu.tar.gz
         dest: /usr/local/bin
         remote_src: true
     - name: Clean up downloaded artifacts
       file:
-        path: "/tmp/{{ item }}"
+        path: /tmp/starship-x86_64-unknown-linux-gnu.tar.gz
         state: absent
-      loop: [starship.tar.gz, starship.tar.gz.sha256]
   when: ansible_facts.os_family == "Debian"
 - name: Install Starship (FreeBSD)
   community.general.cargo:
@@ -30,14 +23,8 @@
     state: latest
   environment:
     PATH: "{{ user_home }}/.cargo/bin:{{ ansible_env.PATH }}"
+  tags: friendly-shell
   when: ansible_facts.os_family == "FreeBSD"
-- name: Install starship (macOS)
-  block:
-    - name: Install starship (macOS)
-      community.general.homebrew:
-        name: starship
-        update_homebrew: true
-  when: ansible_facts.os_family == 'Darwin'
 - name: Permit starship-specific environment variables over SSH
   become: true
   copy:
@@ -46,4 +33,5 @@
       # PrintLastLog no
     dest: /etc/ssh/sshd_config.d/99-acceptenv-starship-custom.conf
   notify: Reload sshd
+  tags: friendly-shell
   when: ansible_facts.os_family != 'Darwin'

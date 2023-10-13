@@ -1,22 +1,16 @@
+port=5353
 # Listen for DNS queries on all interfaces, including loopback and VM bridge
 interface=lo
 interface=eno1
 interface=vmbr0
+interface=wlx00c0cab0476e
 # BUT DO NOT SERVE DHCP except on the VM bridge (vmbr0)
 no-dhcp-interface=lo
 no-dhcp-interface=eno1
-# local=/flight.kja.us/
-address=/flight.kja.us/{{ proxmox_node_ipv4 }}
-{% if kates_worker_ipv4 is match("^([0-9]{1,3}\.){3}[0-9]{1,3}$") %}
-# address=/flight.kja.us/{{ kates_worker_ipv4 }} # Traefik should handle these, at least the ones dnsmasq cannot
-{% endif %}
-{% if kates_worker_ipv6 is match("^([a-f0-9:]+:+)+[a-f0-9]+$") %}
-# address=/flight.kja.us/{{ kates_worker_ipv6 }} # Traefik should handle these, at least the ones dnsmasq cannot
-{% endif %}
-# domain=arbol.kja.us
+no-dhcp-interface=wlx00c0cab0476e
+address=/flight.kja.us/{{ dns_root }}
 domain=flight.kja.us
 dhcp-range=10.0.0.10,10.0.0.200,255.255.255.0,12h
-dhcp-range=2001:DB8::1,2001:DB8::400,64,12h
 dhcp-authoritative
 log-queries
 log-dhcp

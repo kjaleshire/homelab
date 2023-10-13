@@ -1,0 +1,77 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: routeros-controller
+  namespace: routeros-controller
+  labels:
+    app: routeros-controller
+spec:
+  selector:
+    matchLabels:
+      app: routeros-controller
+  replicas: 1
+  serviceName: routeros-controller
+  template:
+    metadata:
+      labels:
+        app: routeros-controller
+    spec:
+      containers:
+        - env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: America/New_York
+            - name: RUST_BACKTRACE
+              value: "1"
+            - name: RUST_LOG
+              value: info
+            - name: ROUTEROS_HOST
+              value: "https://10.44.1.1:4443/"
+            # - name: ROUTEROS_USERNAME
+            #   value: ros_usr
+            # - name: ROUTEROS_PASSWORD
+            #   value: ros_passwd
+          envFrom:
+            - secretRef:
+                name: routeros-controller-secret
+          image: ghcr.io/kjaleshire/routeros-controller:20230911274
+          name: routeros-controller
+          resources: {}
+      serviceAccount: routeros-controller-service-account
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: routeros-controller-service-account
+  namespace: routeros-controller
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: routeros-controller-crb
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: routeros-controller-cr
+subjects:
+  - kind: ServiceAccount
+    name: routeros-controller-service-account
+    namespace: routeros-controller
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: routeros-controller-cr
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - services
+      - services/finalizers
+    verbs:
+      - '*'
+---

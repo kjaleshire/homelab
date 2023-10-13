@@ -1,0 +1,63 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: external-dns
+  namespace: external-dns
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: external-dns
+      sourceRef:
+        kind: HelmRepository
+        name: external-dns
+        namespace: flux-system
+      interval: 30m
+  values:
+    env:
+      - name: GODADDY_API_KEY
+        valueFrom:
+          secretKeyRef:
+            name: external-dns-secret
+            key: GODADDY_API_KEY
+      - name: GODADDY_API_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: external-dns-secret
+            key: GODADDY_API_SECRET
+      # this configMap should be populated by a script that periodically (hourly? daily?)
+      # grabs the current WAN IP from Mikrotik (PUBLIC_IP)
+      - name: WAN_IP
+        valueFrom:
+          configMapKeyRef:
+            name: current-public-ip
+            key: wanIp
+    extraArgs:
+      - --crd-source-apiversion=externaldns.k8s.io/v1alpha1
+      - --crd-source-kind=DNSEndpoint
+      - --annotation-filter=external-dns.alpha.kubernetes.io/exclude notin (true)
+      - --godaddy-api-key=$(GODADDY_API_KEY)
+      - --godaddy-api-secret=$(GODADDY_API_SECRET)
+      - --default-targets=$(WAN_IP)
+      # - --default-targets=flight.kja.us
+    # policy: upsert-only # would prevent ExternalDNS from deleting any records, omit to enable full synchronization
+    # image:
+      # use staging tag until new stable version is released that supports hostnames for `--default-targets`
+      # repository: gcr.io/k8s-staging-external-dns/external-dns
+      # tag: v20230814-v0.13.5-226-g7ddc9dab
+    podAnnotations:
+      reloader.stakater.com/auto: "true"
+    policy: sync
+    provider: godaddy
+    resources: {}
+    serviceMonitor:
+      enabled: true
+    sources:
+      - crd
+      - ingress
+      - service
+    logLevel: debug
+    txtOwnerId: flight
+    txtPrefix: external-dns.flight.
+---

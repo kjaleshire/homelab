@@ -1,0 +1,83 @@
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: vault
+  namespace: vault
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: vault
+      sourceRef:
+        kind: HelmRepository
+        name: hashicorp
+        namespace: flux-system
+      interval: 30m
+  values:
+    injector:
+      agentImage:
+        tag: "1.15.0" # {"$imagepolicy": "vault:vault-image-policy:tag"}
+      strategy:
+        type: Recreate
+    metrics:
+      enabled: true
+    server:
+      dataStorage:
+        # mount a hostPath ourselves below
+        enabled: false
+      extraContainers:
+        - command: ["/bin/sh", "/vault/userconfig/vault_init.sh"]
+          image: docker.io/badouralix/curl-jq
+          name: vault-init-and-unseal
+          volumeMounts:
+            - mountPath: /vault/data
+              name: &dataVolume host-vault-data-volume
+              subPath: data
+            - mountPath: /vault/keys
+              name: *dataVolume
+              subPath: keys
+            - mountPath: /vault/userconfig/vault_init.sh
+              name: vault-init-volume
+              subPath: vault_init.sh
+              readOnly: true
+      image:
+        tag: "1.15.0" # {"$imagepolicy": "vault:vault-image-policy:tag"}
+      ingress:
+        annotations: {}
+        enabled: true
+        hosts:
+          - host: &host vault.flight.kja.us
+        ingressClassName: nginx
+        tls:
+          - hosts:
+              - *host
+      statefulSet:
+        securityContext:
+          pod:
+            runAsGroup: 1000
+            runAsUser: 1000
+            fsGroup: 1000
+      volumeMounts:
+        - mountPath: /vault/data
+          name: *dataVolume
+          subPath: data
+        - mountPath: /vault/keys
+          name: *dataVolume
+          subPath: keys
+      volumes:
+        - hostPath:
+            path: /data/vault
+            type: Directory
+          name: *dataVolume
+        - name: vault-init-volume
+          configMap:
+            items:
+              - key: vault_init.sh
+                path: vault_init.sh
+                mode: 0555
+            name: vault-init-configmap
+    agent:
+      image:
+        tag: "1.15.0" # {"$imagepolicy": "vault:vault-image-policy:tag"}
+    ui:
+      enabled: true

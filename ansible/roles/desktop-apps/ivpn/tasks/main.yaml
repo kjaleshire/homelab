@@ -5,6 +5,10 @@
   when: "'ivpn-ui' not in ansible_facts.packages"
   become: true
   block:
+    - name: Create /etc/apt/keyrings directory
+      file:
+        path: /etc/apt/keyrings
+        state: directory
     - name: Add iVPN PGP public key
       shell: wget -qO - https://repo.ivpn.net/stable/debian/generic.gpg | gpg --dearmor | tee /etc/apt/keyrings/ivpn-archive-keyring.gpg
     - name: Add iVPN repository

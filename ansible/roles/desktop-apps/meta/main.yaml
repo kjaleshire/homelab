@@ -4,4 +4,5 @@ dependencies:
   - role: desktop-apps/nerd-fonts
     tags: fonts
   - role: desktop-apps/sublime-text
+#  - role: desktop-apps/tabby
   - role: desktop-apps/vscode

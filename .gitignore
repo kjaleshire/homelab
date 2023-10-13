@@ -40,3 +40,6 @@ terraform/cloud-init/build/**
 # Certificates & private key
 terraform/cloud-init/common/etc/certs/
 terraform/cloud-init/common/home/ssh/
+
+# Ansible traces
+ansible/trace
